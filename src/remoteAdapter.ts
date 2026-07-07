@@ -22,7 +22,7 @@ export class RemoteAdapter {
       envs.push({ type: 'wsl', name: 'WSL (当前)', condaPath: '', detail: 'VS Code 运行在 WSL 中' });
       return envs;
     }
-    if (vscode.workspace.getConfiguration('conda-ai').get<boolean>('enableWSLSupport')) {
+    if (vscode.workspace.getConfiguration('conda-assistant').get<boolean>('enableWSLSupport')) {
       const wslEnvs = await this.detectWSL();
       envs.push(...wslEnvs);
       if (wslEnvs.length > 0) {

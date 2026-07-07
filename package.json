@@ -1,9 +1,9 @@
 {
-  "name": "conda-ai-manager",
-  "displayName": "Conda AI Manager",
-  "description": "面向 AI 开发者的一站式 Conda 环境管理插件",
+  "name": "conda-assistant",
+  "displayName": "CondaAssistant",
+  "description": "智能 Conda 环境助手",
   "version": "0.1.0",
-  "publisher": "conda-ai",
+  "publisher": "conda-assistant",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -23,23 +23,23 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:condaEnvironments",
-    "onCommand:conda-ai.createEnvironment",
-    "onCommand:conda-ai.healthCheck",
-    "onCommand:conda-ai.quickCreate"
+    "onCommand:conda-assistant.createEnvironment",
+    "onCommand:conda-assistant.healthCheck",
+    "onCommand:conda-assistant.quickCreate"
   ],
   "main": "./out/src/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "conda-ai-sidebar",
+          "id": "conda-assistant-sidebar",
           "title": "Conda AI Manager",
           "icon": "resources/icon.svg"
         }
       ]
     },
     "views": {
-      "conda-ai-sidebar": [
+      "conda-assistant-sidebar": [
         {
           "type": "tree",
           "id": "condaEnvironments",
@@ -54,132 +54,132 @@
     },
     "commands": [
       {
-        "command": "conda-ai.refresh",
+        "command": "conda-assistant.refresh",
         "title": "刷新环境列表"
       },
       {
-        "command": "conda-ai.createEnvironment",
+        "command": "conda-assistant.createEnvironment",
         "title": "创建环境..."
       },
       {
-        "command": "conda-ai.deleteEnvironment",
+        "command": "conda-assistant.deleteEnvironment",
         "title": "删除环境"
       },
       {
-        "command": "conda-ai.activateEnvironment",
+        "command": "conda-assistant.activateEnvironment",
         "title": "激活环境"
       },
       {
-        "command": "conda-ai.quickCreate",
+        "command": "conda-assistant.quickCreate",
         "title": "AI 环境一键创建"
       },
       {
-        "command": "conda-ai.healthCheck",
+        "command": "conda-assistant.healthCheck",
         "title": "AI 环境健康检查"
       },
       {
-        "command": "conda-ai.analyzeEnvironment",
+        "command": "conda-assistant.analyzeEnvironment",
         "title": "环境分析"
       },
       {
-        "command": "conda-ai.exportEnvironment",
+        "command": "conda-assistant.exportEnvironment",
         "title": "一键备份环境"
       },
       {
-        "command": "conda-ai.importEnvironment",
+        "command": "conda-assistant.importEnvironment",
         "title": "一键恢复环境"
       },
       {
-        "command": "conda-ai.selectInterpreter",
+        "command": "conda-assistant.selectInterpreter",
         "title": "切换 Python 解释器"
       },
       {
-        "command": "conda-ai.installPackage",
+        "command": "conda-assistant.installPackage",
         "title": "安装包"
       },
       {
-        "command": "conda-ai.uninstallPackage",
+        "command": "conda-assistant.uninstallPackage",
         "title": "卸载包"
       },
       {
-        "command": "conda-ai.showPackageDeps",
+        "command": "conda-assistant.showPackageDeps",
         "title": "查看依赖"
       },
       {
-        "command": "conda-ai.cloneEnvironment",
+        "command": "conda-assistant.cloneEnvironment",
         "title": "克隆环境"
       },
       {
-        "command": "conda-ai.renameEnvironment",
+        "command": "conda-assistant.renameEnvironment",
         "title": "重命名环境"
       },
       {
-        "command": "conda-ai.detectConflict",
+        "command": "conda-assistant.detectConflict",
         "title": "检测依赖冲突"
       },
       {
-        "command": "conda-ai.scanWSL",
+        "command": "conda-assistant.scanWSL",
         "title": "扫描 WSL Conda 环境"
       },
       {
-        "command": "conda-ai.openWSLTerminal",
+        "command": "conda-assistant.openWSLTerminal",
         "title": "打开 WSL 终端"
       },
       {
-        "command": "conda-ai.diskDiagnose",
+        "command": "conda-assistant.diskDiagnose",
         "title": "磁盘空间诊断"
       },
       {
-        "command": "conda-ai.cleanCache",
+        "command": "conda-assistant.cleanCache",
         "title": "清理缓存（Conda / pip）"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "conda-ai.refresh",
+          "command": "conda-assistant.refresh",
           "when": "view == condaEnvironments",
           "group": "navigation"
         },
         {
-          "command": "conda-ai.createEnvironment",
+          "command": "conda-assistant.createEnvironment",
           "when": "view == condaEnvironments",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "conda-ai.activateEnvironment",
+          "command": "conda-assistant.activateEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv",
           "group": "inline"
         },
         {
-          "command": "conda-ai.analyzeEnvironment",
+          "command": "conda-assistant.analyzeEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv",
           "group": "inline"
         },
         {
-          "command": "conda-ai.deleteEnvironment",
+          "command": "conda-assistant.deleteEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-ai.exportEnvironment",
+          "command": "conda-assistant.exportEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-ai.cloneEnvironment",
+          "command": "conda-assistant.cloneEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-ai.renameEnvironment",
+          "command": "conda-assistant.renameEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-ai.installPackage",
+          "command": "conda-assistant.installPackage",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-ai.uninstallPackage",
+          "command": "conda-assistant.uninstallPackage",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         }
       ]
@@ -187,37 +187,37 @@
     "configuration": {
       "title": "Conda AI Manager",
       "properties": {
-        "conda-ai.condaPath": {
+        "conda-assistant.condaPath": {
           "type": "string",
           "default": "",
           "description": "Conda 可执行文件路径（留空自动检测）"
         },
-        "conda-ai.autoDetectConda": {
+        "conda-assistant.autoDetectConda": {
           "type": "boolean",
           "default": true,
           "description": "启动时自动检测 Conda"
         },
-        "conda-ai.defaultPythonVersion": {
+        "conda-assistant.defaultPythonVersion": {
           "type": "string",
           "default": "3.12",
           "description": "创建环境时的默认 Python 版本"
         },
-        "conda-ai.healthCheckOnStartup": {
+        "conda-assistant.healthCheckOnStartup": {
           "type": "boolean",
           "default": true,
           "description": "启动时自动进行环境健康检查"
         },
-        "conda-ai.showInactiveEnvironments": {
+        "conda-assistant.showInactiveEnvironments": {
           "type": "boolean",
           "default": true,
           "description": "显示非激活环境"
         },
-        "conda-ai.enableWSLSupport": {
+        "conda-assistant.enableWSLSupport": {
           "type": "boolean",
           "default": true,
           "description": "启用 WSL Conda 检测"
         },
-        "conda-ai.condaInstallTimeout": {
+        "conda-assistant.condaInstallTimeout": {
           "type": "number",
           "default": 600000,
           "description": "Conda 安装超时时间（毫秒，默认 10 分钟）"

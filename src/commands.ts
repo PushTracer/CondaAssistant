@@ -48,18 +48,18 @@ export function registerCommands(
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.refresh', refreshEnvironments)
+    vscode.commands.registerCommand('conda-assistant.refresh', refreshEnvironments)
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.createEnvironment', async () => {
+    vscode.commands.registerCommand('conda-assistant.createEnvironment', async () => {
       const name = await vscode.window.showInputBox({
         prompt: '输入环境名称',
         placeHolder: '例如: myenv',
         validateInput: (val) => val ? null : '环境名不能为空'
       });
       if (!name) return;
-      const config = vscode.workspace.getConfiguration('conda-ai');
+      const config = vscode.workspace.getConfiguration('conda-assistant');
       const defaultPy = config.get<string>('defaultPythonVersion') || '3.12';
       const pyVersion = await vscode.window.showInputBox({
         prompt: 'Python 版本',
@@ -75,7 +75,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.deleteEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.deleteEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) {
         vscode.window.showErrorMessage('无法识别要删除的环境，请从环境列表中右键选择');
@@ -97,7 +97,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.activateEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.activateEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (isWSLEnv(envName)) {
@@ -110,7 +110,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.quickCreate', async () => {
+    vscode.commands.registerCommand('conda-assistant.quickCreate', async () => {
       const templateChoice = await vscode.window.showQuickPick(
         AI_ENV_TEMPLATES.map(t => ({
           label: t.label,
@@ -178,7 +178,7 @@ export function registerCommands(
       if (extraPipStr) {
         allPipPkgs.push(...extraPipStr.split(/\s+/).filter(Boolean));
       }
-      const config = vscode.workspace.getConfiguration('conda-ai');
+      const config = vscode.workspace.getConfiguration('conda-assistant');
       const timeout = config.get<number>('condaInstallTimeout') || 600000;
       const outputChannel = vscode.window.createOutputChannel(`安装 ${envName}`);
       outputChannel.show(true);
@@ -296,7 +296,7 @@ export function registerCommands(
 
   let healthPanel: vscode.WebviewPanel | undefined;
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.healthCheck', async () => {
+    vscode.commands.registerCommand('conda-assistant.healthCheck', async () => {
       const result = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'AI 环境健康检查' },
         async (progress) => {
@@ -334,7 +334,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.analyzeEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.analyzeEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -366,7 +366,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.exportEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.exportEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -375,7 +375,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.importEnvironment', async () => {
+    vscode.commands.registerCommand('conda-assistant.importEnvironment', async () => {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: '恢复环境' },
         async (progress) => {
@@ -388,13 +388,35 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.selectInterpreter', async () => {
+    vscode.commands.registerCommand('conda-assistant.switchInterpreter', async (envName: string) => {
+      if (!envName) return;
+      const pyPath = interpreterManager.getEnvPythonPath(envName);
+      if (!pyPath) {
+        vscode.window.showWarningMessage(`未找到环境 ${envName} 的 Python 解释器`);
+        return;
+      }
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: `正在切换解释器到 ${envName}...`
+      }, async () => {
+        const ok = await interpreterManager.autoSelectCondaEnv(envName);
+        if (ok) {
+          vscode.window.showInformationMessage(`已切换解释器到 ${envName} (${pyPath})`);
+        } else {
+          vscode.window.showWarningMessage(`切换解释器失败，请检查输出面板`);
+        }
+      });
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('conda-assistant.selectInterpreter', async () => {
       await interpreterManager.selectInterpreter();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.installPackage', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.installPackage', async (item: any) => {
       const envName = getEnvName(item);
       if (envName && !requireLocalEnv(envName)) return;
       if (!envName) {
@@ -418,7 +440,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.uninstallPackage', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.uninstallPackage', async (item: any) => {
       const getEnv = async (): Promise<string | undefined> => {
         const name = getEnvName(item);
         if (name) {
@@ -466,7 +488,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.showPackageDeps', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.showPackageDeps', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -482,7 +504,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.cloneEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.cloneEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -500,7 +522,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.renameEnvironment', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.renameEnvironment', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -518,7 +540,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.detectConflict', async (item: any) => {
+    vscode.commands.registerCommand('conda-assistant.detectConflict', async (item: any) => {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
@@ -532,7 +554,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.scanWSL', async () => {
+    vscode.commands.registerCommand('conda-assistant.scanWSL', async () => {
       const wslEnvs = await remoteAdapter.detectAllEnvironments();
       const wsl = wslEnvs.filter(e => e.type === 'wsl' && e.name !== 'WSL (当前)');
       if (wsl.length === 0) {
@@ -562,7 +584,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.diskDiagnose', async () => {
+    vscode.commands.registerCommand('conda-assistant.diskDiagnose', async () => {
       const home = process.env.HOME || '/home';
       const reportLines: string[] = [];
       const paths = ['/', '/tmp', home, path.join(home, '.cache', 'pip'), path.join(home, 'miniconda3')];
@@ -583,7 +605,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.cleanCache', async () => {
+    vscode.commands.registerCommand('conda-assistant.cleanCache', async () => {
       const choice = await vscode.window.showQuickPick([
         { label: '🧹 清理 Conda 缓存', description: 'conda clean -afy', value: 'conda' },
         { label: '🧹 清理 pip 缓存', description: 'rm -rf ~/.cache/pip', value: 'pip' },
@@ -613,7 +635,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('conda-ai.openWSLTerminal', async () => {
+    vscode.commands.registerCommand('conda-assistant.openWSLTerminal', async () => {
       const wslEnvs = await remoteAdapter.detectAllEnvironments();
       const wsl = wslEnvs.filter(e => e.type === 'wsl' && e.name !== 'WSL (当前)');
       if (wsl.length === 0) {

@@ -17,25 +17,28 @@ export class InterpreterManager {
     this.outputChannel = outputChannel;
   }
 
+  getEnvPythonPath(envName: string): string | undefined {
+    const prefix = getCondaPrefix();
+    if (!prefix) return undefined;
+    const envPath = path.join(prefix, 'envs', envName);
+    const pyPath = process.platform === 'win32'
+      ? path.join(envPath, 'python.exe')
+      : path.join(envPath, 'bin', 'python');
+    if (fs.existsSync(pyPath)) return pyPath;
+    if (envName === 'base') {
+      const basePy = process.platform === 'win32'
+        ? path.join(prefix, 'python.exe')
+        : path.join(prefix, 'bin', 'python');
+      if (fs.existsSync(basePy)) return basePy;
+    }
+    return undefined;
+  }
+
   async autoSelectCondaEnv(envName: string): Promise<boolean> {
     try {
-      const prefix = getCondaPrefix();
-      if (!prefix) return false;
-      const envPath = process.platform === 'win32'
-        ? path.join(prefix, 'envs', envName)
-        : path.join(prefix, 'envs', envName);
-      const pyPath = process.platform === 'win32'
-        ? path.join(envPath, 'python.exe')
-        : path.join(envPath, 'bin', 'python');
-      if (!fs.existsSync(pyPath)) {
-        if (envName === 'base') {
-          const basePy = process.platform === 'win32'
-            ? path.join(prefix, 'python.exe')
-            : path.join(prefix, 'bin', 'python');
-          if (fs.existsSync(basePy)) {
-            return await this.setInterpreter(basePy, envName);
-          }
-        }
+      const pyPath = this.getEnvPythonPath(envName);
+      if (!pyPath) {
+        this.outputChannel.appendLine(`未找到环境 ${envName} 的 Python 路径`);
         return false;
       }
       return await this.setInterpreter(pyPath, envName);
@@ -47,22 +50,68 @@ export class InterpreterManager {
 
   private async setInterpreter(pyPath: string, envName: string): Promise<boolean> {
     try {
+      this.outputChannel.appendLine(`[setInterpreter] 切换解释器: ${envName} -> ${pyPath}`);
+
+      // 1. 有 workspace 时直接写入 .vscode/settings.json
+      const wf = vscode.workspace.workspaceFolders?.[0];
+      if (wf) {
+        const settingsUri = vscode.Uri.joinPath(wf.uri, '.vscode', 'settings.json');
+        this.outputChannel.appendLine(`[setInterpreter] settings URI: ${settingsUri.toString()}`);
+        let settings: Record<string, any> = {};
+        try {
+          const raw = await vscode.workspace.fs.readFile(settingsUri);
+          settings = JSON.parse(new TextDecoder().decode(raw));
+        } catch { }
+        try {
+          await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(wf.uri, '.vscode'));
+        } catch { }
+        settings['python.defaultInterpreterPath'] = pyPath;
+        settings['python.terminal.activateEnvironment'] = false;
+        await vscode.workspace.fs.writeFile(settingsUri, new TextEncoder().encode(JSON.stringify(settings, null, 2)));
+        this.outputChannel.appendLine('[setInterpreter] 已写入 workspace settings.json');
+      } else {
+        this.outputChannel.appendLine('[setInterpreter] 无 workspace folder，跳过 workspace 写入');
+      }
+
+      // 2. Config API — 逐个 try/catch，避免一个失败阻断后续
       const config = vscode.workspace.getConfiguration('python');
-      await config.update('defaultInterpreterPath', pyPath, vscode.ConfigurationTarget.Workspace);
+      await config.update('defaultInterpreterPath', pyPath, vscode.ConfigurationTarget.Global);
+      this.outputChannel.appendLine('[setInterpreter] 已写入 Global 设置');
+      await config.update('terminal.activateEnvironment', false, vscode.ConfigurationTarget.Global);
+      // 有 workspace 时才尝试写入 workspace 设置
+      if (wf) {
+        try {
+          await config.update('defaultInterpreterPath', pyPath, vscode.ConfigurationTarget.Workspace);
+          await config.update('terminal.activateEnvironment', false, vscode.ConfigurationTarget.Workspace);
+        } catch (e) {
+          this.outputChannel.appendLine(`[setInterpreter] Workspace 设置写入失败（可忽略）: ${e}`);
+        }
+      }
+
+      // 3. 通知 Python 扩展直接选择解释器（这才是真正切换的关键）
+      //    python.setInterpreter 接收 { interpreter: { uri } } 时不弹出 UI
+      try {
+        await vscode.commands.executeCommand('python.setInterpreter', {
+          interpreter: { uri: vscode.Uri.file(pyPath) }
+        });
+        this.outputChannel.appendLine('[setInterpreter] 已调用 python.setInterpreter（直接选择）');
+      } catch (e) {
+        this.outputChannel.appendLine(`[setInterpreter] python.setInterpreter 直接选择失败: ${e}`);
+        // 备选：旧式命令
+        for (const cmd of ['python.clearWorkspaceInterpreter', 'python.refreshInterpreter']) {
+          try {
+            await vscode.commands.executeCommand(cmd);
+            this.outputChannel.appendLine(`[setInterpreter] 已调用 ${cmd}`);
+          } catch { }
+        }
+      }
+
       this.outputChannel.appendLine(`已自动选择解释器: ${envName} (${pyPath})`);
       return true;
     } catch (err) {
       this.outputChannel.appendLine(`设置解释器失败: ${err}`);
       return false;
     }
-  }
-
-  async detectAllInterpreters(): Promise<PythonInterpreter[]> {
-    const interpreters: PythonInterpreter[] = [];
-    await this.detectCondaInterpreters(interpreters);
-    await this.detectVenvInterpreters(interpreters);
-    await this.detectSystemPython(interpreters);
-    return interpreters;
   }
 
   private async detectCondaInterpreters(interpreters: PythonInterpreter[]): Promise<void> {
@@ -90,66 +139,29 @@ export class InterpreterManager {
     }
   }
 
-  private async detectVenvInterpreters(interpreters: PythonInterpreter[]): Promise<void> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) return;
-    for (const folder of workspaceFolders) {
-      for (const envPath of [path.join(folder.uri.fsPath, '.venv'), path.join(folder.uri.fsPath, 'venv')]) {
-        const pyPath = process.platform === 'win32'
-          ? path.join(envPath, 'Scripts', 'python.exe')
-          : path.join(envPath, 'bin', 'python');
-        if (fs.existsSync(pyPath)) {
-          try {
-            const verOut = await execCommand(`"${pyPath}" --version`);
-            interpreters.push({
-              path: pyPath,
-              version: verOut.replace('Python ', '').trim(),
-              type: 'venv',
-              envName: path.basename(envPath)
-            });
-          } catch { }
-        }
-      }
-    }
-  }
-
-  private async detectSystemPython(interpreters: PythonInterpreter[]): Promise<void> {
-    const pythonCmds = process.platform === 'win32'
-      ? ['python', 'python3', 'py']
-      : ['python3', 'python'];
-    for (const cmd of pythonCmds) {
-      try {
-        const out = await execCommand(`${cmd} --version`);
-        const whichOut = await execCommand(process.platform === 'win32' ? `where ${cmd}` : `which ${cmd}`);
-        const pyPath = whichOut.split('\n')[0].trim();
-        if (!interpreters.some(i => i.path === pyPath)) {
-          interpreters.push({
-            path: pyPath,
-            version: out.replace('Python ', '').trim(),
-            type: 'system',
-            envName: 'system'
-          });
-        }
-      } catch { }
-    }
-  }
-
   async selectInterpreter(): Promise<boolean> {
-    const interpreters = await this.detectAllInterpreters();
-    if (interpreters.length === 0) {
-      vscode.window.showWarningMessage('未检测到任何 Python 解释器');
+    try {
+      // 复用已有的 conda env 检测逻辑（与 autoSelectCondaEnv 一致）
+      const condaInterpreters: PythonInterpreter[] = [];
+      await this.detectCondaInterpreters(condaInterpreters);
+      if (condaInterpreters.length === 0) {
+        vscode.window.showWarningMessage('未检测到任何 Conda 环境');
+        return false;
+      }
+      const items = condaInterpreters.map(i => ({
+        label: i.envName,
+        description: i.version,
+        detail: i.path,
+      }));
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: '选择要切换的 Conda 环境'
+      });
+      if (!selected) return false;
+      // 使用与点击版本号完全相同的路径切换
+      return await this.autoSelectCondaEnv(selected.label);
+    } catch (err) {
+      this.outputChannel.appendLine(`选择解释器失败: ${err}`);
       return false;
     }
-    const items = interpreters.map(i => ({
-      label: `${i.envName} (${i.type})`,
-      description: i.version,
-      detail: i.path,
-      interpreter: i
-    }));
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: '选择 Python 解释器'
-    });
-    if (!selected) return false;
-    return await this.setInterpreter(selected.interpreter.path, selected.interpreter.envName);
   }
 }

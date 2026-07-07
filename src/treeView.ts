@@ -52,7 +52,7 @@ export class CondaEnvTreeProvider implements vscode.TreeDataProvider<CondaEnvIte
 
   private async getEnvDetailItems(env: CondaEnvItem): Promise<CondaEnvItem[]> {
     const loadingItem = new CondaEnvItem('loading', '⏳ 正在加载详情...', vscode.TreeItemCollapsibleState.None);
-    loadingItem.iconPath = new vscode.ThemeIcon('sync~spin');
+    loadingItem.iconPath = new vscode.ThemeIcon('loading~spin');
 
     const fullEnv = this.environments.find(e => e.name === env.label.replace('✓ ', ''));
     if (!fullEnv) return [loadingItem];
@@ -64,7 +64,7 @@ export class CondaEnvTreeProvider implements vscode.TreeDataProvider<CondaEnvIte
     }
 
     const details = [
-      { label: `Python ${fullEnv.pythonVersion || '?'}`, icon: 'symbol-misc' },
+      { label: `Python ${fullEnv.pythonVersion || '?'}`, icon: 'symbol-misc', cmd: 'conda-assistant.switchInterpreter', envName: fullEnv.name },
       { label: `${fullEnv.packages} 个包`, icon: 'package' },
       { label: `大小: ${fullEnv.size || '?'}`, icon: 'database' },
       { label: `路径: ${fullEnv.path}`, icon: 'folder' },
@@ -72,6 +72,10 @@ export class CondaEnvTreeProvider implements vscode.TreeDataProvider<CondaEnvIte
     return details.map(d => {
       const item = new CondaEnvItem(d.label, d.label, vscode.TreeItemCollapsibleState.None);
       item.iconPath = new vscode.ThemeIcon(d.icon);
+      if (d.cmd && 'envName' in d) {
+        item.command = { command: d.cmd, title: '切换解释器', arguments: [d.envName] };
+        item.tooltip = '点击切换 VS Code Python 解释器到此环境';
+      }
       return item;
     });
   }
@@ -87,10 +91,10 @@ export class CondaQuickActionsProvider implements vscode.TreeDataProvider<QuickA
 
   getChildren(): Thenable<QuickActionItem[]> {
     const actions = [
-      new QuickActionItem('create', '🔄 AI 环境一键创建', vscode.TreeItemCollapsibleState.None, 'conda-ai.quickCreate', 'wand'),
-      new QuickActionItem('health', '🏥 环境健康检查', vscode.TreeItemCollapsibleState.None, 'conda-ai.healthCheck', 'heart'),
-      new QuickActionItem('import', '📥 一键恢复环境', vscode.TreeItemCollapsibleState.None, 'conda-ai.importEnvironment', 'cloud-download'),
-      new QuickActionItem('interpreter', '🐍 切换解释器', vscode.TreeItemCollapsibleState.None, 'conda-ai.selectInterpreter', 'symbol-misc'),
+      new QuickActionItem('create', '🔄 AI 环境一键创建', vscode.TreeItemCollapsibleState.None, 'conda-assistant.quickCreate', 'new-file'),
+      new QuickActionItem('health', '🏥 环境健康检查', vscode.TreeItemCollapsibleState.None, 'conda-assistant.healthCheck', 'check'),
+      new QuickActionItem('import', '📥 一键恢复环境', vscode.TreeItemCollapsibleState.None, 'conda-assistant.importEnvironment', 'cloud'),
+      new QuickActionItem('interpreter', '🐍 切换解释器', vscode.TreeItemCollapsibleState.None, 'conda-assistant.selectInterpreter', 'symbol-misc'),
     ];
     return Promise.resolve(actions);
   }

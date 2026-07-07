@@ -42,7 +42,7 @@ export interface HealthCheckItem {
 }
 
 export function getCondaPath(): string {
-  const config = vscode.workspace.getConfiguration('conda-ai');
+  const config = vscode.workspace.getConfiguration('conda-assistant');
   const customPath = config.get<string>('condaPath');
   if (customPath) return customPath;
   if (process.platform === 'win32') {

@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(outputChannel);
 
-  const autoDetect = vscode.workspace.getConfiguration('conda-ai').get<boolean>('autoDetectConda');
+  const autoDetect = vscode.workspace.getConfiguration('conda-assistant').get<boolean>('autoDetectConda');
   if (autoDetect) {
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Window,
@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
           } else {
             const setupAction = '查看安装指南';
             vscode.window.showWarningMessage(
-              '未检测到 Conda。请安装 Miniconda 或 Anaconda，或在设置中配置 conda-ai.condaPath。',
+              '未检测到 Conda。请安装 Miniconda 或 Anaconda，或在设置中配置 conda-assistant.condaPath。',
               setupAction
             ).then(action => {
               if (action === setupAction) {
@@ -74,7 +74,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
           }
         }
-        const healthOnStartup = vscode.workspace.getConfiguration('conda-ai').get<boolean>('healthCheckOnStartup');
+        const healthOnStartup = vscode.workspace.getConfiguration('conda-assistant').get<boolean>('healthCheckOnStartup');
         if (healthOnStartup && info) {
           progress.report({ message: '执行健康检查...' });
           outputChannel.appendLine('正在执行启动健康检查...');
