@@ -1,0 +1,246 @@
+{
+  "name": "conda-ai-manager",
+  "displayName": "Conda AI Manager",
+  "description": "面向 AI 开发者的一站式 Conda 环境管理插件",
+  "version": "0.1.0",
+  "publisher": "conda-ai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "conda",
+    "python",
+    "ai",
+    "deep learning",
+    "cuda",
+    "environment"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:condaEnvironments",
+    "onCommand:conda-ai.createEnvironment",
+    "onCommand:conda-ai.healthCheck",
+    "onCommand:conda-ai.quickCreate"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "conda-ai-sidebar",
+          "title": "Conda AI Manager",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "conda-ai-sidebar": [
+        {
+          "type": "tree",
+          "id": "condaEnvironments",
+          "name": "Conda 环境"
+        },
+        {
+          "type": "tree",
+          "id": "condaQuickActions",
+          "name": "快速操作"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "conda-ai.refresh",
+        "title": "刷新环境列表"
+      },
+      {
+        "command": "conda-ai.createEnvironment",
+        "title": "创建环境..."
+      },
+      {
+        "command": "conda-ai.deleteEnvironment",
+        "title": "删除环境"
+      },
+      {
+        "command": "conda-ai.activateEnvironment",
+        "title": "激活环境"
+      },
+      {
+        "command": "conda-ai.quickCreate",
+        "title": "AI 环境一键创建"
+      },
+      {
+        "command": "conda-ai.healthCheck",
+        "title": "AI 环境健康检查"
+      },
+      {
+        "command": "conda-ai.analyzeEnvironment",
+        "title": "环境分析"
+      },
+      {
+        "command": "conda-ai.exportEnvironment",
+        "title": "一键备份环境"
+      },
+      {
+        "command": "conda-ai.importEnvironment",
+        "title": "一键恢复环境"
+      },
+      {
+        "command": "conda-ai.selectInterpreter",
+        "title": "切换 Python 解释器"
+      },
+      {
+        "command": "conda-ai.installPackage",
+        "title": "安装包"
+      },
+      {
+        "command": "conda-ai.uninstallPackage",
+        "title": "卸载包"
+      },
+      {
+        "command": "conda-ai.showPackageDeps",
+        "title": "查看依赖"
+      },
+      {
+        "command": "conda-ai.cloneEnvironment",
+        "title": "克隆环境"
+      },
+      {
+        "command": "conda-ai.renameEnvironment",
+        "title": "重命名环境"
+      },
+      {
+        "command": "conda-ai.detectConflict",
+        "title": "检测依赖冲突"
+      },
+      {
+        "command": "conda-ai.scanWSL",
+        "title": "扫描 WSL Conda 环境"
+      },
+      {
+        "command": "conda-ai.openWSLTerminal",
+        "title": "打开 WSL 终端"
+      },
+      {
+        "command": "conda-ai.diskDiagnose",
+        "title": "磁盘空间诊断"
+      },
+      {
+        "command": "conda-ai.cleanCache",
+        "title": "清理缓存（Conda / pip）"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "conda-ai.refresh",
+          "when": "view == condaEnvironments",
+          "group": "navigation"
+        },
+        {
+          "command": "conda-ai.createEnvironment",
+          "when": "view == condaEnvironments",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "conda-ai.activateEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv",
+          "group": "inline"
+        },
+        {
+          "command": "conda-ai.analyzeEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv",
+          "group": "inline"
+        },
+        {
+          "command": "conda-ai.deleteEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-ai.exportEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-ai.cloneEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-ai.renameEnvironment",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-ai.installPackage",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-ai.uninstallPackage",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Conda AI Manager",
+      "properties": {
+        "conda-ai.condaPath": {
+          "type": "string",
+          "default": "",
+          "description": "Conda 可执行文件路径（留空自动检测）"
+        },
+        "conda-ai.autoDetectConda": {
+          "type": "boolean",
+          "default": true,
+          "description": "启动时自动检测 Conda"
+        },
+        "conda-ai.defaultPythonVersion": {
+          "type": "string",
+          "default": "3.12",
+          "description": "创建环境时的默认 Python 版本"
+        },
+        "conda-ai.healthCheckOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "启动时自动进行环境健康检查"
+        },
+        "conda-ai.showInactiveEnvironments": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示非激活环境"
+        },
+        "conda-ai.enableWSLSupport": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 WSL Conda 检测"
+        },
+        "conda-ai.condaInstallTimeout": {
+          "type": "number",
+          "default": 600000,
+          "description": "Conda 安装超时时间（毫秒，默认 10 分钟）"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "lint": "tslint -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.2",
+    "vsce": "^2.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "mocha": "^10.2.0"
+  }
+}
