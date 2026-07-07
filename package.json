@@ -3,8 +3,12 @@
   "displayName": "CondaAssistant",
   "description": "智能 Conda 环境助手",
   "version": "0.1.0",
-  "publisher": "conda-assistant",
+  "publisher": "pushtracer",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PushTracer/CondaAssistant"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -28,13 +32,14 @@
     "onCommand:conda-assistant.quickCreate"
   ],
   "main": "./out/src/extension.js",
+  "icon": "resources/icon.png",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
           "id": "conda-assistant-sidebar",
           "title": "Conda AI Manager",
-          "icon": "resources/icon.svg"
+          "icon": "resources/icon.png"
         }
       ]
     },
