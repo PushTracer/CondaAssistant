@@ -1,14 +1,25 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execConda, execCommand, parseCondaEnvList, CondaEnvironment, CondaInfo, getCondaPath, getCondaPrefix, getEnvPath, formatBytes } from './utils';
+import { Logger } from '../core/logger';
+import { execConda, execFileChecked } from '../core/shell';
+import {
+  getCondaPath,
+  getCondaPrefix,
+  getEnvPath,
+  getEnvPythonPath,
+  getDirectorySize,
+} from '../core/platform';
+import { formatBytes } from '../util/format';
+import { parseCondaEnvList } from '../util/parse';
+import { CondaEnvironment, CondaInfo, InstalledPackage } from '../models/types';
 
-export class CondaManager {
-  private outputChannel: vscode.OutputChannel;
+export interface DeleteEnvironmentOptions {
+  promptCacheClean?: boolean;
+}
 
-  constructor(outputChannel: vscode.OutputChannel) {
-    this.outputChannel = outputChannel;
-  }
+export class CondaService {
+  constructor(private readonly logger: Logger) {}
 
   async getCondaInfo(): Promise<CondaInfo | null> {
     try {
@@ -27,26 +38,31 @@ export class CondaManager {
         condaPath: getCondaPath()
       };
     } catch (err) {
-      this.outputChannel.appendLine(`获取 Conda 信息失败: ${err}`);
+      this.logger.error('获取 Conda 信息失败', err);
       return null;
     }
   }
 
   async enrichEnvironment(env: CondaEnvironment): Promise<CondaEnvironment> {
     try {
-      const [pyVer, pkgCount, envSize] = await Promise.all([
+      const [pythonVersion, packages, size] = await Promise.all([
         this.getPythonVersion(env.name).catch(() => ''),
         this.getPackageCount(env.name).catch(() => 0),
         this.getEnvSize(env.name).catch(() => '')
       ]);
-      env.pythonVersion = pyVer;
-      env.packages = pkgCount;
-      env.size = envSize;
-    } catch { }
+      env.pythonVersion = pythonVersion;
+      env.packages = packages;
+      env.size = size;
+    } catch (err) {
+      this.logger.error(`补充环境信息失败 (${env.name})`, err);
+    }
     return env;
   }
 
-  async enrichAllEnvironments(envs: CondaEnvironment[], onProgress?: (done: number, total: number) => void): Promise<CondaEnvironment[]> {
+  async enrichAllEnvironments(
+    envs: CondaEnvironment[],
+    onProgress?: (done: number, total: number) => void
+  ): Promise<CondaEnvironment[]> {
     const result: CondaEnvironment[] = [];
     for (let i = 0; i < envs.length; i++) {
       result.push(await this.enrichEnvironment(envs[i]));
@@ -57,15 +73,12 @@ export class CondaManager {
 
   async getPythonVersion(envName: string): Promise<string> {
     try {
-      const pyPath = process.platform === 'win32'
-        ? path.join(getEnvPath(envName), 'python.exe')
-        : path.join(getEnvPath(envName), 'bin', 'python');
-      if (fs.existsSync(pyPath)) {
-        const output = await execCommand(`"${pyPath}" --version`, 10000);
-        return output.replace('Python ', '').trim();
-      }
-      return '';
-    } catch {
+      const pythonPath = getEnvPythonPath(envName);
+      if (!pythonPath) return '';
+      const output = await execFileChecked(pythonPath, ['--version'], 10000);
+      return output.replace('Python ', '').trim();
+    } catch (err) {
+      this.logger.error(`获取 Python 版本失败 (${envName})`, err);
       return '';
     }
   }
@@ -87,7 +100,7 @@ export class CondaManager {
       const rootPrefix = info.root_prefix || '';
       if (envName === 'base' || envName === rootPrefix) {
         if (fs.existsSync(rootPrefix)) {
-          return formatBytes(await this.getDirSize(rootPrefix));
+          return formatBytes(await getDirectorySize(rootPrefix));
         }
         return '未知';
       }
@@ -95,67 +108,53 @@ export class CondaManager {
       for (const dir of envDirs) {
         const envPath = path.join(dir, envName);
         if (fs.existsSync(envPath)) {
-          return formatBytes(await this.getDirSize(envPath));
+          return formatBytes(await getDirectorySize(envPath));
         }
       }
       const fallback = path.join(rootPrefix, 'envs', envName);
       if (fs.existsSync(fallback)) {
-        return formatBytes(await this.getDirSize(fallback));
+        return formatBytes(await getDirectorySize(fallback));
       }
       return '未知';
-    } catch (err: any) {
-      this.outputChannel.appendLine(`获取环境大小失败 (${envName}): ${err?.message || err}`);
+    } catch (err) {
+      this.logger.error(`获取环境大小失败 (${envName})`, err);
       return '未知';
     }
-  }
-
-  private async getDirSize(dirPath: string): Promise<number> {
-    let total = 0;
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-        if (entry.isDirectory()) {
-          total += await this.getDirSize(fullPath);
-        } else if (entry.isFile()) {
-          total += fs.statSync(fullPath).size;
-        }
-      }
-    } catch { }
-    return total;
   }
 
   async createEnvironment(name: string, pythonVersion: string, packages: string[] = []): Promise<boolean> {
     try {
       const args = ['create', '-y', '-n', name, `python=${pythonVersion}`, ...packages];
-      this.outputChannel.appendLine(`创建环境: conda ${args.join(' ')}`);
+      this.logger.log(`创建环境: conda ${args.join(' ')}`);
       await execConda(args, 120000);
-      this.outputChannel.appendLine(`环境 ${name} 创建成功`);
+      this.logger.log(`环境 ${name} 创建成功`);
       return true;
     } catch (err) {
-      this.outputChannel.appendLine(`创建环境失败: ${err}`);
+      this.logger.error(`创建环境失败 (${name})`, err);
       vscode.window.showErrorMessage(`创建环境 ${name} 失败`);
       return false;
     }
   }
 
-  async deleteEnvironment(name: string): Promise<boolean> {
+  async deleteEnvironment(name: string, options: DeleteEnvironmentOptions = {}): Promise<boolean> {
+    const { promptCacheClean = true } = options;
     try {
       await execConda(['remove', '-y', '-n', name, '--all']);
-      this.outputChannel.appendLine(`环境 ${name} 已删除`);
-      const cleanChoice = await vscode.window.showInformationMessage(
-        `环境 ${name} 已删除。是否同时清理 Conda 包缓存以释放磁盘空间？`,
-        '清理缓存', '暂不清理'
-      );
-      if (cleanChoice === '清理缓存') {
-        await execConda(['clean', '-afy'], 120000);
-        this.outputChannel.appendLine('Conda 缓存已清理');
+      this.logger.log(`环境 ${name} 已删除`);
+      if (promptCacheClean) {
+        const cleanChoice = await vscode.window.showInformationMessage(
+          `环境 ${name} 已删除。是否同时清理 Conda 包缓存以释放磁盘空间？`,
+          '清理缓存', '暂不清理'
+        );
+        if (cleanChoice === '清理缓存') {
+          await execConda(['clean', '-afy'], 120000);
+          this.logger.log('Conda 缓存已清理');
+        }
       }
       return true;
-    } catch (err: any) {
-      const reason = err?.message || String(err);
-      this.outputChannel.appendLine(`删除环境失败: ${reason}`);
-      vscode.window.showErrorMessage(`删除环境 ${name} 失败: ${reason}`);
+    } catch (err) {
+      this.logger.error(`删除环境失败 (${name})`, err);
+      vscode.window.showErrorMessage(`删除环境 ${name} 失败: ${err instanceof Error ? err.message : String(err)}`);
       return false;
     }
   }
@@ -163,11 +162,11 @@ export class CondaManager {
   async cloneEnvironment(src: string, dst: string): Promise<boolean> {
     try {
       await execConda(['create', '-y', '-n', dst, '--clone', src], 180000);
-      this.outputChannel.appendLine(`环境 ${src} 已克隆到 ${dst}`);
+      this.logger.log(`环境 ${src} 已克隆到 ${dst}`);
       return true;
     } catch (err) {
-      this.outputChannel.appendLine(`克隆环境失败: ${err}`);
-      vscode.window.showErrorMessage(`克隆环境失败`);
+      this.logger.error(`克隆环境失败 (${src} -> ${dst})`, err);
+      vscode.window.showErrorMessage('克隆环境失败');
       return false;
     }
   }
@@ -175,7 +174,7 @@ export class CondaManager {
   async renameEnvironment(oldName: string, newName: string): Promise<boolean> {
     const cloned = await this.cloneEnvironment(oldName, newName);
     if (cloned) {
-      return await this.deleteEnvironment(oldName);
+      return await this.deleteEnvironment(oldName, { promptCacheClean: false });
     }
     return false;
   }
@@ -195,8 +194,8 @@ export class CondaManager {
       vscode.window.showInformationMessage(`环境 ${name} 已导出到 ${uri.fsPath}`);
       return uri.fsPath;
     } catch (err) {
-      this.outputChannel.appendLine(`导出环境失败: ${err}`);
-      vscode.window.showErrorMessage(`导出环境失败`);
+      this.logger.error(`导出环境失败 (${name})`, err);
+      vscode.window.showErrorMessage('导出环境失败');
       return null;
     }
   }
@@ -220,8 +219,8 @@ export class CondaManager {
       vscode.window.showInformationMessage(`环境已从 ${filePath} 恢复`);
       return true;
     } catch (err) {
-      this.outputChannel.appendLine(`导入环境失败: ${err}`);
-      vscode.window.showErrorMessage(`导入环境失败`);
+      this.logger.error('导入环境失败', err);
+      vscode.window.showErrorMessage('导入环境失败');
       return false;
     }
   }
@@ -229,10 +228,10 @@ export class CondaManager {
   async installPackage(envName: string, pkgName: string): Promise<boolean> {
     try {
       await execConda(['install', '-y', '-n', envName, pkgName], 120000);
-      this.outputChannel.appendLine(`已安装 ${pkgName} 到 ${envName}`);
+      this.logger.log(`已安装 ${pkgName} 到 ${envName}`);
       return true;
     } catch (err) {
-      this.outputChannel.appendLine(`安装包失败: ${err}`);
+      this.logger.error(`安装包失败 (${pkgName} -> ${envName})`, err);
       vscode.window.showErrorMessage(`安装 ${pkgName} 失败`);
       return false;
     }
@@ -241,16 +240,16 @@ export class CondaManager {
   async uninstallPackage(envName: string, pkgName: string): Promise<{ success: boolean; error?: string }> {
     try {
       await execConda(['remove', '-y', '-n', envName, pkgName]);
-      this.outputChannel.appendLine(`已从 ${envName} 卸载 ${pkgName}`);
+      this.logger.log(`已从 ${envName} 卸载 ${pkgName}`);
       return { success: true };
-    } catch (err: any) {
-      const reason = err?.message || String(err);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
       const shortReason = reason
         .replace(/^.*error: /, '')
         .replace(/^Error: /, '')
         .split('\n')[0]
         .trim();
-      this.outputChannel.appendLine(`卸载包失败: ${reason}`);
+      this.logger.error(`卸载包失败 (${pkgName})`, reason);
       return { success: false, error: shortReason };
     }
   }
@@ -258,22 +257,26 @@ export class CondaManager {
   async listPackages(envName: string): Promise<string> {
     try {
       return await execConda(['list', '-n', envName]);
-    } catch {
+    } catch (err) {
+      this.logger.error(`列出包失败 (${envName})`, err);
       return '';
     }
   }
 
-  async listPackagesJSON(envName: string): Promise<{ name: string; version: string; channel: string }[]> {
+  async listPackagesJSON(envName: string): Promise<InstalledPackage[]> {
     try {
       const output = await execConda(['list', '-n', envName, '--json']);
       const packages = JSON.parse(output);
       if (!Array.isArray(packages)) return [];
-      return packages.map((p: any) => ({
-        name: p.name || '',
-        version: p.version || '',
-        channel: p.channel || '',
-      })).filter(p => p.name);
-    } catch {
+      return packages
+        .map((pkg: Record<string, unknown>) => ({
+          name: String(pkg.name || ''),
+          version: String(pkg.version || ''),
+          channel: String(pkg.channel || ''),
+        }))
+        .filter(pkg => pkg.name);
+    } catch (err) {
+      this.logger.error(`读取包列表失败 (${envName})`, err);
       return [];
     }
   }
@@ -287,10 +290,13 @@ export class CondaManager {
       if (envName === 'base') {
         envPath = rootPrefix;
       } else {
-        const envsDirs = condaInfo.envs_dirs || [];
+        const envsDirs: string[] = condaInfo.envs_dirs || [];
         for (const dir of envsDirs) {
-          const p = path.join(dir, envName);
-          if (fs.existsSync(p)) { envPath = p; break; }
+          const candidate = path.join(dir, envName);
+          if (fs.existsSync(candidate)) {
+            envPath = candidate;
+            break;
+          }
         }
         if (!envPath) envPath = path.join(rootPrefix, 'envs', envName);
       }
@@ -299,32 +305,35 @@ export class CondaManager {
         return await execConda(['list', '-n', envName]);
       }
       const files = fs.readdirSync(condaMeta).filter((f: string) => f.endsWith('.json') && !f.endsWith('.xz'));
-      const pkgSizes: { name: string; version: string; size: number }[] = [];
+      const packageSizes: { name: string; version: string; size: number }[] = [];
       for (const file of files) {
         try {
           const content = JSON.parse(fs.readFileSync(path.join(condaMeta, file), 'utf-8'));
-          pkgSizes.push({
+          packageSizes.push({
             name: content.name || file,
             version: content.version || '',
             size: content.size || 0
           });
-        } catch { }
+        } catch {
+          // skip unreadable metadata
+        }
       }
-      pkgSizes.sort((a, b) => b.size - a.size);
-      const total = pkgSizes.reduce((s, p) => s + p.size, 0);
-      const realSize = fs.existsSync(envPath) ? formatBytes(await this.getDirSize(envPath)) : '?';
-      let output = `# 包分析 (${pkgSizes.length} 个包)\n`;
+      packageSizes.sort((a, b) => b.size - a.size);
+      const total = packageSizes.reduce((sum, pkg) => sum + pkg.size, 0);
+      const realSize = fs.existsSync(envPath) ? formatBytes(await getDirectorySize(envPath)) : '?';
+      let output = `# 包分析 (${packageSizes.length} 个包)\n`;
       output += `包净体积: ${formatBytes(total)}  |  环境目录实际大小: ${realSize}\n\n`;
       output += `${'包名'.padEnd(30)} ${'版本'.padEnd(18)} ${'大小'.padEnd(10)}\n`;
       output += `${'─'.repeat(58)}\n`;
-      for (const pkg of pkgSizes) {
+      for (const pkg of packageSizes) {
         output += `${pkg.name.padEnd(30)} ${pkg.version.padEnd(18)} ${formatBytes(pkg.size).padStart(10)}\n`;
       }
       output += `${'─'.repeat(58)}\n`;
       output += `${'包净体积总计'.padEnd(30)} ${''.padEnd(18)} ${formatBytes(total).padStart(10)}\n`;
       output += `${'环境目录实际总计'.padEnd(30)} ${''.padEnd(18)} ${realSize.padStart(10)}\n`;
       return output;
-    } catch {
+    } catch (err) {
+      this.logger.error(`包体积分析失败 (${envName})`, err);
       return await execConda(['list', '-n', envName]);
     }
   }
@@ -333,12 +342,13 @@ export class CondaManager {
     try {
       const output = await execConda(['list', '-n', envName, '--json']);
       const packages = JSON.parse(output);
-      const pkg = packages.find((p: any) => p.name === pkgName);
-      if (pkg && pkg.depends) {
-        return pkg.depends.map((d: string) => d.split(' ')[0]);
+      const pkg = packages.find((p: { name?: string }) => p.name === pkgName);
+      if (pkg && Array.isArray(pkg.depends)) {
+        return pkg.depends.map((dep: string) => dep.split(' ')[0]);
       }
       return [];
-    } catch {
+    } catch (err) {
+      this.logger.error(`获取包依赖失败 (${pkgName})`, err);
       return [];
     }
   }
@@ -362,10 +372,12 @@ export class CondaManager {
             const dir = path.join(condaDir, sub);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
           }
-        } catch { /* ignore dir creation errors */ }
+        } catch {
+          // ignore dir creation errors
+        }
       };
-      ensureCondaDirs(getEnvPath(envName));     // target env
-      ensureCondaDirs(getCondaPrefix());          // base env (for deactivation)
+      ensureCondaDirs(getEnvPath(envName));
+      ensureCondaDirs(getCondaPrefix());
       const prefix = getCondaPrefix();
       if (prefix) {
         terminal.sendText(`source "${prefix}/etc/profile.d/conda.sh" && conda activate ${envName}`);
@@ -374,7 +386,7 @@ export class CondaManager {
       }
       return true;
     } catch (err) {
-      this.outputChannel.appendLine(`激活环境失败: ${err}`);
+      this.logger.error(`激活环境失败 (${envName})`, err);
       return false;
     }
   }
@@ -386,21 +398,19 @@ export class CondaManager {
       const packages = JSON.parse(output);
       const depMap = new Map<string, Set<string>>();
       for (const pkg of packages) {
-        if (pkg.depends) {
-          for (const dep of pkg.depends) {
-            const depName = dep.split(' ')[0].split('>')[0].split('<')[0].split('=')[0];
-            if (!depMap.has(depName)) depMap.set(depName, new Set());
-            depMap.get(depName)!.add(pkg.name);
-          }
+        if (!Array.isArray(pkg.depends)) continue;
+        for (const dep of pkg.depends) {
+          const depName = dep.split(' ')[0].split('>')[0].split('<')[0].split('=')[0];
+          if (!depMap.has(depName)) depMap.set(depName, new Set());
+          depMap.get(depName)!.add(pkg.name);
         }
       }
       for (const [dep, dependents] of depMap) {
         if (dependents.size > 1) {
-          const depsArr = Array.from(dependents);
-          let versions = new Set<string>();
-          for (const parent of depsArr) {
-            const parentPkg = packages.find((p: any) => p.name === parent);
-            if (parentPkg && parentPkg.depends) {
+          const versions = new Set<string>();
+          for (const parent of dependents) {
+            const parentPkg = packages.find((p: { name?: string }) => p.name === parent);
+            if (parentPkg && Array.isArray(parentPkg.depends)) {
               for (const d of parentPkg.depends) {
                 if (d.startsWith(dep)) {
                   const verMatch = d.match(/[><=]+([\d.]+)/);
@@ -414,7 +424,9 @@ export class CondaManager {
           }
         }
       }
-    } catch { }
+    } catch (err) {
+      this.logger.error(`依赖冲突检测失败 (${envName})`, err);
+    }
     return issues;
   }
 }

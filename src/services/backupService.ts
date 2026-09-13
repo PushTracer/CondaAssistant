@@ -1,66 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execConda, execCommand } from './utils';
+import { Logger } from '../core/logger';
+import { execConda, execFileChecked } from '../core/shell';
+import { isWindows } from '../core/platform';
 
-export class BackupManager {
-  private outputChannel: vscode.OutputChannel;
-
-  constructor(outputChannel: vscode.OutputChannel) {
-    this.outputChannel = outputChannel;
-  }
-
-  async backupWithCondaPack(envName: string): Promise<boolean> {
-    try {
-      const uri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file(`${envName}.tar.gz`),
-        filters: { 'Archive': ['tar.gz'] }
-      });
-      if (!uri) return false;
-      const envPath = await this.getEnvPath(envName);
-      if (!envPath) {
-        vscode.window.showErrorMessage('无法获取环境路径');
-        return false;
-      }
-      const pipPath = process.platform === 'win32'
-        ? path.join(envPath, 'Scripts', 'pip.exe')
-        : path.join(envPath, 'bin', 'pip');
-      if (fs.existsSync(pipPath)) {
-        await execCommand(`"${pipPath}" install conda-pack`, 60000);
-      } else {
-        await execConda(['install', '-y', '-n', envName, 'conda-pack'], 120000);
-      }
-      const outputPath = uri.fsPath;
-      const pyPath = process.platform === 'win32'
-        ? path.join(envPath, 'python.exe')
-        : path.join(envPath, 'bin', 'python');
-      const packCmd = `"${pyPath}" -m conda_pack -o "${outputPath}"`;
-      await execCommand(packCmd, 180000);
-      vscode.window.showInformationMessage(`环境 ${envName} 已打包到 ${outputPath} (${this.getFileSize(outputPath)})`);
-      return true;
-    } catch (err) {
-      this.outputChannel.appendLine(`conda-pack 备份失败: ${err}`);
-      vscode.window.showErrorMessage('conda-pack 备份失败');
-      return false;
-    }
-  }
-
-  async exportRequirements(envName: string): Promise<boolean> {
-    try {
-      const uri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file(`requirements-${envName}.txt`),
-        filters: { 'Requirements': ['txt'] }
-      });
-      if (!uri) return false;
-      const output = await execConda(['list', '-n', envName, '--export']);
-      fs.writeFileSync(uri.fsPath, output);
-      vscode.window.showInformationMessage(`已导出 requirements.txt`);
-      return true;
-    } catch (err) {
-      this.outputChannel.appendLine(`导出 requirements 失败: ${err}`);
-      return false;
-    }
-  }
+export class BackupService {
+  constructor(private readonly logger: Logger) {}
 
   async backupEnvironment(envName: string): Promise<void> {
     const choice = await vscode.window.showQuickPick([
@@ -79,10 +25,61 @@ export class BackupManager {
       });
       if (uri) {
         fs.writeFileSync(uri.fsPath, output);
-        vscode.window.showInformationMessage(`已导出 environment.yml`);
+        vscode.window.showInformationMessage('已导出 environment.yml');
       }
     } else {
       await this.exportRequirements(envName);
+    }
+  }
+
+  async backupWithCondaPack(envName: string): Promise<boolean> {
+    try {
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(`${envName}.tar.gz`),
+        filters: { 'Archive': ['tar.gz'] }
+      });
+      if (!uri) return false;
+      const envPath = await this.getEnvPath(envName);
+      if (!envPath) {
+        vscode.window.showErrorMessage('无法获取环境路径');
+        return false;
+      }
+      const pipPath = isWindows()
+        ? path.join(envPath, 'Scripts', 'pip.exe')
+        : path.join(envPath, 'bin', 'pip');
+      if (fs.existsSync(pipPath)) {
+        await execFileChecked(pipPath, ['install', 'conda-pack'], 60000);
+      } else {
+        await execConda(['install', '-y', '-n', envName, 'conda-pack'], 120000);
+      }
+      const outputPath = uri.fsPath;
+      const pyPath = isWindows()
+        ? path.join(envPath, 'python.exe')
+        : path.join(envPath, 'bin', 'python');
+      await execFileChecked(pyPath, ['-m', 'conda_pack', '-o', outputPath], 180000);
+      vscode.window.showInformationMessage(`环境 ${envName} 已打包到 ${outputPath} (${this.getFileSize(outputPath)})`);
+      return true;
+    } catch (err) {
+      this.logger.error(`conda-pack 备份失败 (${envName})`, err);
+      vscode.window.showErrorMessage('conda-pack 备份失败');
+      return false;
+    }
+  }
+
+  async exportRequirements(envName: string): Promise<boolean> {
+    try {
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(`requirements-${envName}.txt`),
+        filters: { 'Requirements': ['txt'] }
+      });
+      if (!uri) return false;
+      const output = await execConda(['list', '-n', envName, '--export']);
+      fs.writeFileSync(uri.fsPath, output);
+      vscode.window.showInformationMessage('已导出 requirements.txt');
+      return true;
+    } catch (err) {
+      this.logger.error(`导出 requirements 失败 (${envName})`, err);
+      return false;
     }
   }
 
@@ -94,7 +91,8 @@ export class BackupManager {
       const envDir = data.envs_dirs[0] || path.join(data.root_prefix, 'envs');
       const envPath = path.join(envDir, envName);
       return fs.existsSync(envPath) ? envPath : null;
-    } catch {
+    } catch (err) {
+      this.logger.error(`解析环境路径失败 (${envName})`, err);
       return null;
     }
   }
@@ -102,9 +100,9 @@ export class BackupManager {
   private getFileSize(filePath: string): string {
     try {
       const bytes = fs.statSync(filePath).size;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(1024));
-      return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
     } catch {
       return '未知';
     }

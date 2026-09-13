@@ -1,0 +1,34 @@
+import * as vscode from 'vscode';
+
+export class QuickActionsTreeProvider implements vscode.TreeDataProvider<QuickActionItem> {
+  private readonly emitter = new vscode.EventEmitter<QuickActionItem | undefined | null>();
+  readonly onDidChangeTreeData: vscode.Event<QuickActionItem | undefined | null> = this.emitter.event;
+
+  getTreeItem(element: QuickActionItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(): Thenable<QuickActionItem[]> {
+    const actions = [
+      new QuickActionItem('create', '🔄 AI 环境一键创建', 'conda-assistant.quickCreate', 'new-file'),
+      new QuickActionItem('health', '🏥 环境健康检查', 'conda-assistant.healthCheck', 'check'),
+      new QuickActionItem('import', '📥 一键恢复环境', 'conda-assistant.importEnvironment', 'cloud'),
+      new QuickActionItem('interpreter', '🐍 切换解释器', 'conda-assistant.selectInterpreter', 'symbol-misc'),
+    ];
+    return Promise.resolve(actions);
+  }
+}
+
+class QuickActionItem extends vscode.TreeItem {
+  constructor(
+    public readonly id: string,
+    label: string,
+    commandId: string,
+    icon: string
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.id = id;
+    this.command = { command: commandId, title: label };
+    this.iconPath = new vscode.ThemeIcon(icon);
+  }
+}

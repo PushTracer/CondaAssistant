@@ -1,9 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { execConda, execCommand, HealthCheckResult, HealthCheckItem, getEnvPath } from './utils';
+import { Logger } from '../core/logger';
+import { execConda, execFileChecked } from '../core/shell';
+import { getEnvPath } from '../core/platform';
+import { HealthCheckItem, HealthCheckResult } from '../models/types';
 
-export class HealthChecker {
-  constructor() { }
+export class HealthService {
+  constructor(private readonly logger: Logger) {}
 
   async runFullCheck(): Promise<HealthCheckResult> {
     const checks: HealthCheckItem[] = [];
@@ -23,8 +26,9 @@ export class HealthChecker {
       const data = JSON.parse(out);
       const envs: string[] = data.envs || [];
       const root = data.conda_prefix || '';
-      return envs.map((p: string) => p === root ? 'base' : path.basename(p));
-    } catch {
+      return envs.map((envPath: string) => (envPath === root ? 'base' : path.basename(envPath)));
+    } catch (err) {
+      this.logger.error('健康检查: 读取环境列表失败', err);
       return [];
     }
   }
@@ -50,11 +54,11 @@ export class HealthChecker {
   private async checkConda(checks: HealthCheckItem[]): Promise<void> {
     try {
       const output = await execConda(['--version']);
-      const ver = output.replace('conda ', '').trim();
+      const version = output.replace('conda ', '').trim();
       checks.push({
         name: 'Conda',
         status: 'ok',
-        message: `Conda ${ver} 已安装`
+        message: `Conda ${version} 已安装`
       });
     } catch {
       checks.push({
@@ -70,13 +74,15 @@ export class HealthChecker {
     let baseVer = '?';
     if (basePy && fs.existsSync(basePy)) {
       try {
-        baseVer = (await execCommand(`"${basePy}" --version`, 5000)).replace('Python ', '').trim();
-      } catch { }
+        baseVer = (await execFileChecked(basePy, ['--version'], 5000)).replace('Python ', '').trim();
+      } catch {
+        // keep unknown version
+      }
     }
-    const details = envs.map(e => {
-      const py = this.pyPath(e);
-      if (py && fs.existsSync(py)) return `${e}`;
-      return `${e} (!)`;
+    const details = envs.map(env => {
+      const py = this.pyPath(env);
+      if (py && fs.existsSync(py)) return `${env}`;
+      return `${env} (!)`;
     }).join(', ');
     checks.push({
       name: '环境',
@@ -91,26 +97,32 @@ export class HealthChecker {
       const py = this.pyPath(env);
       if (!py || !fs.existsSync(py)) continue;
       try {
-        const out = await execCommand(`"${py}" -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"`, 10000);
+        const out = await execFileChecked(
+          py,
+          ['-c', 'import torch; print(torch.__version__); print(torch.cuda.is_available())'],
+          10000
+        );
         const lines = out.split('\n').filter(l => l.trim());
-        const ver = lines[0]?.trim() || '';
-        const cudaAvail = lines[1]?.trim() === 'True';
+        const version = lines[0]?.trim() || '';
+        const cudaAvailable = lines[1]?.trim() === 'True';
         found = true;
         checks.push({
           name: `PyTorch (${env})`,
-          status: cudaAvail ? 'ok' : 'warning',
-          message: cudaAvail
-            ? `PyTorch ${ver} (CUDA 可用)`
-            : `PyTorch ${ver} (CUDA 不可用)`
+          status: cudaAvailable ? 'ok' : 'warning',
+          message: cudaAvailable
+            ? `PyTorch ${version} (CUDA 可用)`
+            : `PyTorch ${version} (CUDA 不可用)`
         });
         break;
-      } catch { /* try next env */ }
+      } catch {
+        // try next environment
+      }
     }
     if (!found) {
       checks.push({
         name: 'PyTorch',
         status: 'warning',
-        message: `未在任何环境中检测到 PyTorch`
+        message: '未在任何环境中检测到 PyTorch'
       });
     }
   }
@@ -121,20 +133,26 @@ export class HealthChecker {
       const py = this.pyPath(env);
       if (!py || !fs.existsSync(py)) continue;
       try {
-        const out = await execCommand(`"${py}" -c "import tensorflow as tf; print(tf.__version__); print(len(tf.config.list_physical_devices('GPU')))"`, 10000);
+        const out = await execFileChecked(
+          py,
+          ['-c', "import tensorflow as tf; print(tf.__version__); print(len(tf.config.list_physical_devices('GPU')))"],
+          10000
+        );
         const lines = out.split('\n').filter(l => l.trim());
-        const ver = lines[0]?.trim() || '';
+        const version = lines[0]?.trim() || '';
         const gpuCount = parseInt(lines[1]?.trim() || '0');
         found = true;
         checks.push({
           name: `TensorFlow (${env})`,
           status: gpuCount > 0 ? 'ok' : 'warning',
           message: gpuCount > 0
-            ? `TensorFlow ${ver} (GPU: ${gpuCount})`
-            : `TensorFlow ${ver} (仅 CPU)`
+            ? `TensorFlow ${version} (GPU: ${gpuCount})`
+            : `TensorFlow ${version} (仅 CPU)`
         });
         break;
-      } catch { /* try next env */ }
+      } catch {
+        // try next environment
+      }
     }
     if (!found) {
       checks.push({
@@ -155,7 +173,7 @@ export class HealthChecker {
           ? path.join(path.dirname(py), 'pip.exe')
           : path.join(path.dirname(py), 'pip');
         if (!fs.existsSync(pipPath)) continue;
-        const out = await execCommand(`"${pipPath}" --version`, 5000);
+        const out = await execFileChecked(pipPath, ['--version'], 5000);
         found = true;
         checks.push({
           name: `pip (${env})`,
@@ -163,7 +181,9 @@ export class HealthChecker {
           message: out.split(' ').slice(0, 2).join(' ')
         });
         break;
-      } catch { /* try next env */ }
+      } catch {
+        // try next environment
+      }
     }
     if (!found) {
       checks.push({

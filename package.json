@@ -2,7 +2,7 @@
   "name": "conda-assistant",
   "displayName": "CondaAssistant",
   "description": "智能 Conda 环境助手",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "pushtracer",
   "license": "MIT",
   "repository": {
@@ -27,9 +27,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:condaEnvironments",
-    "onCommand:conda-assistant.createEnvironment",
-    "onCommand:conda-assistant.healthCheck",
-    "onCommand:conda-assistant.quickCreate"
+    "onView:condaQuickActions"
   ],
   "main": "./out/src/extension.js",
   "icon": "resources/icon.png",
@@ -97,6 +95,10 @@
       {
         "command": "conda-assistant.selectInterpreter",
         "title": "切换 Python 解释器"
+      },
+      {
+        "command": "conda-assistant.switchInterpreter",
+        "title": "切换解释器（指定环境）"
       },
       {
         "command": "conda-assistant.installPackage",
@@ -236,7 +238,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "node ./out/test/runTest.js",
-    "lint": "tslint -p ./",
+    "lint": "tsc --noEmit -p ./",
     "package": "vsce package"
   },
   "devDependencies": {
