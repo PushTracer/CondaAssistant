@@ -37,14 +37,14 @@ CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境�
 方式一（命令行）：
 
 ```bash
-code --install-extension conda-assistant-0.2.0.vsix
+code --install-extension conda-assistant-0.3.0.vsix
 ```
 
 方式二（图形界面）：
 
 1. 打开 VS Code，按 `Ctrl+Shift+X` 打开扩展面板；
 2. 点击右上角 `...` → **Install from VSIX...**；
-3. 选择 `conda-assistant-0.2.0.vsix` 并重载窗口。
+3. 选择 `conda-assistant-0.3.0.vsix` 并重载窗口。
 
 ### 1.3 首次启动
 
@@ -346,7 +346,7 @@ npm run watch        # 监听编译
 npm run lint         # 类型检查（tsc --noEmit）
 npm run l10n:check   # 校验英文翻译是否覆盖全部 l10n.t 文案
 npm test             # 启动 VS Code 扩展测试（9 个用例）
-npm run package      # 打包生成 conda-assistant-0.2.0.vsix
+npm run package      # 打包生成 conda-assistant-0.3.0.vsix
 ```
 
 代码结构：
