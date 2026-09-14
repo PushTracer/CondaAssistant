@@ -179,52 +179,6 @@ export class CondaService {
     return false;
   }
 
-  async exportEnvironment(name: string, format: 'yml' | 'txt' = 'yml'): Promise<string | null> {
-    try {
-      const uri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file(`${name}.${format === 'yml' ? 'yml' : 'txt'}`),
-        filters: format === 'yml'
-          ? { 'Environment YAML': ['yml', 'yaml'] }
-          : { 'Requirements': ['txt'] }
-      });
-      if (!uri) return null;
-      const flag = format === 'yml' ? 'export' : 'list --export';
-      const output = await execConda(['env', flag, '-n', name]);
-      fs.writeFileSync(uri.fsPath, output);
-      vscode.window.showInformationMessage(`环境 ${name} 已导出到 ${uri.fsPath}`);
-      return uri.fsPath;
-    } catch (err) {
-      this.logger.error(`导出环境失败 (${name})`, err);
-      vscode.window.showErrorMessage('导出环境失败');
-      return null;
-    }
-  }
-
-  async importEnvironment(): Promise<boolean> {
-    try {
-      const uri = await vscode.window.showOpenDialog({
-        canSelectMany: false,
-        filters: {
-          'Environment Files': ['yml', 'yaml', 'txt']
-        }
-      });
-      if (!uri || !uri[0]) return false;
-      const filePath = uri[0].fsPath;
-      const ext = path.extname(filePath);
-      if (ext === '.txt') {
-        await execConda(['install', '-y', '--file', filePath], 180000);
-      } else {
-        await execConda(['env', 'create', '-f', filePath], 180000);
-      }
-      vscode.window.showInformationMessage(`环境已从 ${filePath} 恢复`);
-      return true;
-    } catch (err) {
-      this.logger.error('导入环境失败', err);
-      vscode.window.showErrorMessage('导入环境失败');
-      return false;
-    }
-  }
-
   async installPackage(envName: string, pkgName: string): Promise<boolean> {
     try {
       await execConda(['install', '-y', '-n', envName, pkgName], 120000);

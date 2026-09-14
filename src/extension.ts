@@ -4,9 +4,9 @@ import { getConfig } from './core/config';
 import { CondaService } from './services/condaService';
 import { HealthService } from './services/healthService';
 import { InterpreterService } from './services/interpreterService';
-import { BackupService } from './services/backupService';
 import { RemoteService } from './services/remoteService';
 import { DiskService } from './services/diskService';
+import { PytorchTestService } from './services/pytorchTestService';
 import { EnvironmentsTreeProvider } from './views/environmentsTree';
 import { QuickActionsTreeProvider } from './views/quickActionsTree';
 import { registerCommands } from './commands';
@@ -19,9 +19,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const conda = new CondaService(logger);
   const health = new HealthService(logger);
   const interpreter = new InterpreterService(logger);
-  const backup = new BackupService(logger);
   const remote = new RemoteService(logger);
   const disk = new DiskService(logger);
+  const pytorchTest = new PytorchTestService(logger);
 
   const envTree = new EnvironmentsTreeProvider(conda);
   const quickActions = new QuickActionsTreeProvider();
@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider('condaQuickActions', quickActions)
   );
 
-  registerCommands({ context, logger, conda, health, interpreter, backup, remote, disk, envTree });
+  registerCommands({ context, logger, conda, health, interpreter, remote, disk, pytorchTest, envTree });
 
   if (getConfig().autoDetectConda) {
     void initialize(logger, conda, health, remote, envTree);

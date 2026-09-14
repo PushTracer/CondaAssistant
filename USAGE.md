@@ -1,6 +1,6 @@
 # CondaAssistant 使用教程
 
-CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境助手：在侧边栏统一管理 Conda 环境，一键创建 PyTorch、TensorFlow 等框架环境，并对环境做健康检查、备份恢复、磁盘诊断和 WSL 扫描。
+CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境助手：在侧边栏统一管理 Conda 环境，一键创建 PyTorch、TensorFlow 等框架环境，并对环境做健康检查、PyTorch 功能测试、磁盘诊断和 WSL 扫描。
 
 ---
 
@@ -12,14 +12,13 @@ CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境�
 - [4. AI 环境一键创建](#4-ai-环境一键创建)
 - [5. 环境健康检查](#5-环境健康检查)
 - [6. 环境分析](#6-环境分析)
-- [7. 备份与恢复](#7-备份与恢复)
-- [8. 包管理与依赖](#8-包管理与依赖)
-- [9. WSL 支持](#9-wsl-支持)
-- [10. 磁盘与缓存](#10-磁盘与缓存)
-- [11. 全部命令](#11-全部命令)
-- [12. 设置项](#12-设置项)
-- [13. 常见问题](#13-常见问题)
-- [14. 开发者指引](#14-开发者指引)
+- [7. 包管理与依赖](#7-包管理与依赖)
+- [8. WSL 支持](#8-wsl-支持)
+- [9. 磁盘与缓存](#9-磁盘与缓存)
+- [10. 全部命令](#10-全部命令)
+- [11. 设置项](#11-设置项)
+- [12. 常见问题](#12-常见问题)
+- [13. 开发者指引](#13-开发者指引)
 
 ---
 
@@ -72,7 +71,7 @@ code --install-extension conda-assistant-0.2.0.vsix
 - 每个环境是一个可展开节点，`✓` 表示当前激活环境；
 - **展开节点**会异步加载详情：Python 版本、包数量、目录大小、路径；
 - 点击 **`Python x.y`** 一行可直接把 VS Code 解释器切换到此环境；
-- 右键菜单：删除、备份、克隆、重命名、安装包、卸载包；
+- 右键菜单：删除、克隆、重命名、安装包、卸载包、PyTorch 功能测试；
 - 悬停节点右侧的行内按钮：**激活环境**、**环境分析**；
 - 视图标题栏的按钮：**刷新环境列表**、**创建环境**。
 
@@ -84,7 +83,7 @@ code --install-extension conda-assistant-0.2.0.vsix
 |------|----------|
 | 🔄 AI 环境一键创建 | `conda-assistant.quickCreate` |
 | 🏥 环境健康检查 | `conda-assistant.healthCheck` |
-| 📥 一键恢复环境 | `conda-assistant.importEnvironment` |
+| 🧪 PyTorch 功能测试 | `conda-assistant.pytorchTest` |
 | 🐍 切换解释器 | `conda-assistant.selectInterpreter` |
 
 ---
@@ -128,6 +127,22 @@ WSL 环境会提示你改用 WSL 终端手动激活。
 - Python 版本、包总数、环境目录实际大小；
 - 每个包的名称、版本、体积（按体积降序）；
 - 「包净体积总计」与「环境目录实际总计」对比。
+
+### 3.6 PyTorch 功能测试
+
+在环境节点右键 → **PyTorch 功能测试**（或快速操作里的 🧪 入口、命令面板执行），选择环境后扩展会调用该环境的 Python 运行内置测试脚本，覆盖 23 项：
+
+- 基础：CPU Tensor / Tensor 基础操作 / CUDA Tensor / CPU↔GPU 传输；
+- 自动求导与网络：Autograd、CUDA Autograd、神经网络、GPU 神经网络、CNN；
+- 训练链路：Loss、Optimizer、完整训练循环、DataLoader、GPU DataLoader；
+- 精度与性能：AMP/FP16、BF16、CUDA 显存分配、CPU/GPU 计算正确性、GPU 压力测试、CUDA 算子；
+- 生态：模型保存/加载、torch.compile、cuDNN。
+
+运行日志实时输出到独立的 `PyTorch 测试 <环境名>` 输出通道，结束时弹出汇总：
+
+- `PASS` 通过项数；`WARN` 为跳过/不支持（如无 GPU、BF16 不支持）；`FAIL` 为失败项数；
+- 环境未安装 torch 时会提示先用「AI 环境一键创建」或 pip 安装；
+- 测试脚本位于扩展目录 `resources/pytorch_test.py`，也可单独复制出来手动运行。
 
 ---
 
@@ -203,28 +218,7 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 
 ---
 
-## 7. 备份与恢复
-
-### 7.1 备份（右键 → 一键备份环境）
-
-| 方式 | 文件 | 适用场景 |
-|------|------|----------|
-| environment.yml（推荐） | `<env>.yml` | 跨平台重建，只含依赖声明 |
-| requirements.txt | `requirements-<env>.txt` | pip 工作流 |
-| conda-pack | `<env>.tar.gz` | 完整环境（含二进制），可离线迁移 |
-
-conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o <file>`。
-
-### 7.2 恢复（快速操作 → 一键恢复环境）
-
-选择 `.yml` / `.yaml` / `.txt` 文件：
-
-- YAML：`conda env create -f <file>`；
-- TXT：`conda install -y --file <file>`。
-
----
-
-## 8. 包管理与依赖
+## 7. 包管理与依赖
 
 | 操作 | 入口 | 说明 |
 |------|------|------|
@@ -235,7 +229,7 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 
 ---
 
-## 9. WSL 支持
+## 8. WSL 支持
 
 - 启动时若 `enableWSLSupport` 为 `true`，会自动枚举 WSL 发行版并检测其中的 Conda；发现的发行版里的环境会以 `🐧 名字 (WSL)` 附加到环境树，只读；
 - **扫描 WSL Conda 环境**：选择一个发行版，浏览其中的环境及 Python 版本、路径；
@@ -245,7 +239,7 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 
 ---
 
-## 10. 磁盘与缓存
+## 9. 磁盘与缓存
 
 ### 10.1 磁盘空间诊断
 
@@ -263,7 +257,7 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 
 ---
 
-## 11. 全部命令
+## 10. 全部命令
 
 在命令面板（`Ctrl+Shift+P`）中搜索 `Conda` 即可看到：
 
@@ -275,9 +269,8 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 | `conda-assistant.activateEnvironment` | 激活环境 |
 | `conda-assistant.quickCreate` | AI 环境一键创建 |
 | `conda-assistant.healthCheck` | AI 环境健康检查 |
+| `conda-assistant.pytorchTest` | PyTorch 功能测试 |
 | `conda-assistant.analyzeEnvironment` | 环境分析 |
-| `conda-assistant.exportEnvironment` | 一键备份环境 |
-| `conda-assistant.importEnvironment` | 一键恢复环境 |
 | `conda-assistant.selectInterpreter` | 切换 Python 解释器 |
 | `conda-assistant.switchInterpreter` | 切换解释器（指定环境） |
 | `conda-assistant.installPackage` | 安装包 |
@@ -293,7 +286,7 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 
 ---
 
-## 12. 设置项
+## 11. 设置项
 
 在设置中搜索 `conda-assistant`：
 
@@ -309,7 +302,7 @@ conda-pack 模式会先安装 `conda-pack`，再执行 `python -m conda_pack -o 
 
 ---
 
-## 13. 常见问题
+## 12. 常见问题
 
 **Q：提示「未检测到 Conda」？**
 安装 Miniconda / Anaconda 后重载窗口，或在设置中显式填写 `conda-assistant.condaPath`。Windows 常见路径为 `%USERPROFILE%\miniconda3\Scripts\conda.exe`。
@@ -334,7 +327,7 @@ RTX 50 系列显卡选 `cu130`（模板中会带「RTX 50 系列推荐」标记�
 
 ---
 
-## 14. 开发者指引
+## 13. 开发者指引
 
 ```bash
 npm install          # 安装依赖

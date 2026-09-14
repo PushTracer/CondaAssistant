@@ -12,7 +12,7 @@ export class QuickActionsTreeProvider implements vscode.TreeDataProvider<QuickAc
     const actions = [
       new QuickActionItem('create', '🔄 AI 环境一键创建', 'conda-assistant.quickCreate', 'new-file'),
       new QuickActionItem('health', '🏥 环境健康检查', 'conda-assistant.healthCheck', 'check'),
-      new QuickActionItem('import', '📥 一键恢复环境', 'conda-assistant.importEnvironment', 'cloud'),
+      new QuickActionItem('pytest', '🧪 PyTorch 功能测试', 'conda-assistant.pytorchTest', 'beaker'),
       new QuickActionItem('interpreter', '🐍 切换解释器', 'conda-assistant.selectInterpreter', 'symbol-misc'),
     ];
     return Promise.resolve(actions);

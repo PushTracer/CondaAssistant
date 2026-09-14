@@ -81,16 +81,12 @@
         "title": "AI 环境健康检查"
       },
       {
+        "command": "conda-assistant.pytorchTest",
+        "title": "PyTorch 功能测试"
+      },
+      {
         "command": "conda-assistant.analyzeEnvironment",
         "title": "环境分析"
-      },
-      {
-        "command": "conda-assistant.exportEnvironment",
-        "title": "一键备份环境"
-      },
-      {
-        "command": "conda-assistant.importEnvironment",
-        "title": "一键恢复环境"
       },
       {
         "command": "conda-assistant.selectInterpreter",
@@ -170,10 +166,6 @@
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
         {
-          "command": "conda-assistant.exportEnvironment",
-          "when": "view == condaEnvironments && viewItem == condaEnv"
-        },
-        {
           "command": "conda-assistant.cloneEnvironment",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         },
@@ -187,6 +179,10 @@
         },
         {
           "command": "conda-assistant.uninstallPackage",
+          "when": "view == condaEnvironments && viewItem == condaEnv"
+        },
+        {
+          "command": "conda-assistant.pytorchTest",
           "when": "view == condaEnvironments && viewItem == condaEnv"
         }
       ]
