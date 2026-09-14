@@ -23,7 +23,7 @@ export function registerAiCommands(ctx: CommandContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('conda-assistant.healthCheck', async () => {
       const result = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('AI 环境健康检查') },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('环境健康检查') },
         async (progress) => {
           progress.report({ message: vscode.l10n.t('正在检测 Conda/Python/CUDA/Torch...') });
           return await health.runFullCheck();
@@ -33,7 +33,7 @@ export function registerAiCommands(ctx: CommandContext): void {
         healthPanel.reveal(vscode.ViewColumn.One);
       } else {
         healthPanel = vscode.window.createWebviewPanel(
-          'healthCheck', vscode.l10n.t('AI 环境健康检查'), vscode.ViewColumn.One,
+          'healthCheck', vscode.l10n.t('环境健康检查'), vscode.ViewColumn.One,
           { enableScripts: true }
         );
         healthPanel.onDidDispose(() => { healthPanel = undefined; });

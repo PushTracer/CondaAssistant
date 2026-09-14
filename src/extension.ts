@@ -12,9 +12,9 @@ import { QuickActionsTreeProvider } from './views/quickActionsTree';
 import { registerCommands } from './commands';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const outputChannel = vscode.window.createOutputChannel('Conda AI Manager');
+  const outputChannel = vscode.window.createOutputChannel('Conda Manager');
   const logger = new Logger(outputChannel);
-  logger.log(vscode.l10n.t('Conda AI Manager 启动中...'));
+  logger.log(vscode.l10n.t('Conda Manager 启动中...'));
 
   const conda = new CondaService(logger);
   const health = new HealthService(logger);
@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
     void initialize(logger, conda, health, remote, envTree);
   }
 
-  logger.log(vscode.l10n.t('Conda AI Manager 已激活'));
+  logger.log(vscode.l10n.t('Conda Manager 已激活'));
 }
 
 async function initialize(
@@ -50,7 +50,7 @@ async function initialize(
 ): Promise<void> {
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
-    title: vscode.l10n.t('Conda AI Manager 初始化中...'),
+    title: vscode.l10n.t('Conda Manager 初始化中...'),
   }, async (progress) => {
     try {
       progress.report({ message: vscode.l10n.t('检测 Conda 环境') });

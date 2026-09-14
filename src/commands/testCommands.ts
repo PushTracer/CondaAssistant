@@ -64,7 +64,7 @@ export function registerTestCommands(ctx: CommandContext): void {
       );
 
       if (torchMissing) {
-        outputChannel.appendLine(vscode.l10n.t('提示: 该环境未安装 PyTorch，请先用「AI 环境一键创建」或 pip 安装 torch。'));
+        outputChannel.appendLine(vscode.l10n.t('提示: 该环境未安装 PyTorch，请先用「环境一键创建」或 pip 安装 torch。'));
         vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 未安装 PyTorch，测试无法执行', envName));
         return;
       }

@@ -9,7 +9,7 @@ CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境�
 - [1. 安装](#1-安装)
 - [2. 界面说明](#2-界面说明)
 - [3. 常用操作](#3-常用操作)
-- [4. AI 环境一键创建](#4-ai-环境一键创建)
+- [4. 环境一键创建](#4-环境一键创建)
 - [5. 环境健康检查](#5-环境健康检查)
 - [6. 环境分析](#6-环境分析)
 - [7. 包管理与依赖](#7-包管理与依赖)
@@ -48,13 +48,13 @@ code --install-extension conda-assistant-0.2.0.vsix
 
 ### 1.3 首次启动
 
-安装后左侧活动栏会出现 **Conda AI Manager** 图标。扩展会：
+安装后左侧活动栏会出现 **Conda Manager** 图标。扩展会：
 
 1. 自动探测本机与 WSL 中的 Conda；
 2. 加载环境列表并通过窗口进度条提示；
 3. 根据设置执行一次启动健康检查。
 
-所有日志输出在 **输出面板 → Conda AI Manager** 中。若未检测到 Conda，会弹出提示与官网安装指南，你可以在设置中手动指定路径：
+所有日志输出在 **输出面板 → Conda Manager** 中。若未检测到 Conda，会弹出提示与官网安装指南，你可以在设置中手动指定路径：
 
 ```json
 { "conda-assistant.condaPath": "C:\\Users\\you\\miniconda3\\Scripts\\conda.exe" }
@@ -91,7 +91,7 @@ code --install-extension conda-assistant-0.2.0.vsix
 
 | 操作 | 对应命令 |
 |------|----------|
-| 🔄 AI 环境一键创建 | `conda-assistant.quickCreate` |
+| 🔄 环境一键创建 | `conda-assistant.quickCreate` |
 | 🏥 环境健康检查 | `conda-assistant.healthCheck` |
 | 🧪 PyTorch 功能测试 | `conda-assistant.pytorchTest` |
 | 🐍 切换解释器 | `conda-assistant.selectInterpreter` |
@@ -151,14 +151,14 @@ WSL 环境会提示你改用 WSL 终端手动激活。
 运行日志实时输出到独立的 `PyTorch 测试 <环境名>` 输出通道，结束时弹出汇总：
 
 - `PASS` 通过项数；`WARN` 为跳过/不支持（如无 GPU、BF16 不支持）；`FAIL` 为失败项数；
-- 环境未安装 torch 时会提示先用「AI 环境一键创建」或 pip 安装；
+- 环境未安装 torch 时会提示先用「环境一键创建」或 pip 安装；
 - 测试脚本位于扩展目录 `resources/pytorch_test.py`，也可单独复制出来手动运行。
 
 ---
 
-## 4. AI 环境一键创建
+## 4. 环境一键创建
 
-执行 **AI 环境一键创建** 后按提示操作。
+执行 **环境一键创建** 后按提示操作。
 
 ### 4.1 内置模板
 
@@ -206,7 +206,7 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 
 ## 5. 环境健康检查
 
-执行 **AI 环境健康检查** 后打开健康面板，检查项包括：
+执行 **环境健康检查** 后打开健康面板，检查项包括：
 
 | 检查项 | 说明 |
 |--------|------|
@@ -277,8 +277,8 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 | `conda-assistant.createEnvironment` | 创建环境... |
 | `conda-assistant.deleteEnvironment` | 删除环境 |
 | `conda-assistant.activateEnvironment` | 激活环境 |
-| `conda-assistant.quickCreate` | AI 环境一键创建 |
-| `conda-assistant.healthCheck` | AI 环境健康检查 |
+| `conda-assistant.quickCreate` | 环境一键创建 |
+| `conda-assistant.healthCheck` | 环境健康检查 |
 | `conda-assistant.pytorchTest` | PyTorch 功能测试 |
 | `conda-assistant.analyzeEnvironment` | 环境分析 |
 | `conda-assistant.selectInterpreter` | 切换 Python 解释器 |

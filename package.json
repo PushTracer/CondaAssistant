@@ -1,6 +1,6 @@
 {
   "name": "conda-assistant",
-  "displayName": "CondaAssistant",
+  "displayName": "Conda Manager",
   "description": "%description%",
   "version": "0.2.0",
   "publisher": "pushtracer",
@@ -36,7 +36,7 @@
       "activitybar": [
         {
           "id": "conda-assistant-sidebar",
-          "title": "Conda AI Manager",
+          "title": "Conda Manager",
           "icon": "resources/icon.png"
         }
       ]
@@ -188,7 +188,7 @@
       ]
     },
     "configuration": {
-      "title": "Conda AI Manager",
+      "title": "Conda Manager",
       "properties": {
         "conda-assistant.condaPath": {
           "type": "string",
