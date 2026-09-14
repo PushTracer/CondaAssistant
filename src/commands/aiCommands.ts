@@ -72,12 +72,13 @@ export function registerAiCommands(ctx: CommandContext): void {
       variants = fetched;
     }
 
-    let cudaChoice: { label: string; value: string; extraPip: string[] };
+    let cudaChoice: { label: string; value: string; extraPip: string[]; pythonTags?: string[] };
     if (variants.length === 1) {
       cudaChoice = {
         label: variants[0].label,
         value: variants[0].cudaVersion,
-        extraPip: variants[0].extraPip || []
+        extraPip: variants[0].extraPip || [],
+        pythonTags: variants[0].pythonTags
       };
     } else {
       const choice = await vscode.window.showQuickPick(
@@ -85,7 +86,8 @@ export function registerAiCommands(ctx: CommandContext): void {
           label: variant.label,
           description: variant.cudaVersion ? `CUDA ${variant.cudaVersion}` : '',
           value: variant.cudaVersion,
-          extraPip: variant.extraPip || []
+          extraPip: variant.extraPip || [],
+          pythonTags: variant.pythonTags
         })),
         { placeHolder: `选择 ${template.label} 版本` }
       );
@@ -107,6 +109,16 @@ export function registerAiCommands(ctx: CommandContext): void {
       validateInput: (value) => (/^\d+\.\d+$/.test(value) ? null : '格式: x.y (如 3.12)')
     });
     if (!pyVersion) return;
+
+    const pyTag = `cp${pyVersion.replace(/\./g, '')}`;
+    if (cudaChoice.pythonTags && cudaChoice.pythonTags.length > 0 && !cudaChoice.pythonTags.includes(pyTag)) {
+      const proceed = await vscode.window.showWarningMessage(
+        `所选版本没有适配 Python ${pyVersion} 的 torch 包（该索引可用: ${cudaChoice.pythonTags.join(' / ')}），继续安装大概率失败。`,
+        { modal: true },
+        '仍然继续', '返回重选'
+      );
+      if (proceed !== '仍然继续') return;
+    }
 
     const allPipPackages = [...new Set([...template.pipPackages, ...(cudaChoice.extraPip || [])])];
     const extraPipStr = await vscode.window.showInputBox({
@@ -151,6 +163,7 @@ export function registerAiCommands(ctx: CommandContext): void {
 
     let lastSpeed = '';
     let completed = false;
+    let torchUnavailable = false;
     try {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: `创建 ${envName}`, cancellable: true },
@@ -205,6 +218,9 @@ export function registerAiCommands(ctx: CommandContext): void {
               ['install', ...allPipPackages],
               (line) => {
                 outputChannel.appendLine(line);
+                if (/No matching distribution found for torch|Could not find a version that satisfies the requirement torch/i.test(line)) {
+                  torchUnavailable = true;
+                }
                 const download = line.match(/(\S+)\s+([\d.]+[kMG]B)\s+[\d.]+\w+\s+([\d.]+[kMG]B\/s])/);
                 if (download) {
                   lastSpeed = `${download[1]} ${download[2]} @ ${download[3]}`;
@@ -231,6 +247,9 @@ export function registerAiCommands(ctx: CommandContext): void {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       outputChannel.appendLine(`\n创建失败: ${message}`);
+      if (torchUnavailable) {
+        outputChannel.appendLine('提示: 该 CUDA 索引下没有适配当前 Python 版本的 torch 轮子，请更换 CUDA 版本或 Python 版本后重试。');
+      }
       vscode.window.showErrorMessage(`环境创建失败: ${message}`);
     }
   }

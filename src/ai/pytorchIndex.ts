@@ -2,6 +2,7 @@ import * as https from 'https';
 import { CUDAVariant } from './templates';
 
 const PYTORCH_INDEX = 'https://download.pytorch.org/whl';
+const PROBE_LIMIT = 6;
 
 async function httpsGetText(url: string, timeoutMs = 10000): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -24,6 +25,12 @@ interface CudaIndex {
   minor: number;
 }
 
+interface VariantPackages {
+  torchTags?: string[];
+  vision: boolean;
+  audio: boolean;
+}
+
 function parseCudaIndexes(html: string): CudaIndex[] {
   const re = /href="(cu\d+)\/"/g;
   const seen = new Set<string>();
@@ -39,17 +46,42 @@ function parseCudaIndexes(html: string): CudaIndex[] {
   return indexes;
 }
 
-async function checkAvailablePackages(cudaSuffix: string): Promise<{ vision: boolean; audio: boolean }> {
-  const hasWheel = async (pkg: string): Promise<boolean> => {
-    try {
-      const html = await httpsGetText(`${PYTORCH_INDEX}/${cudaSuffix}/${pkg}/`, 5000);
-      return /cp312.*linux_x86_64/.test(html);
-    } catch {
-      return false;
+function platformPattern(): RegExp {
+  if (process.platform === 'win32') return /win_amd64/i;
+  if (process.platform === 'darwin') return /macosx/i;
+  return /linux/i;
+}
+
+async function fetchPackagePythonTags(cudaPath: string, pkg: string): Promise<string[] | undefined> {
+  try {
+    const html = await httpsGetText(`${PYTORCH_INDEX}/${cudaPath}/${pkg}/`, 5000);
+    const platform = platformPattern();
+    const tags = new Set<string>();
+    const wheelRe = /href="([^"]+\.whl)"/g;
+    let match: RegExpExecArray | null;
+    while ((match = wheelRe.exec(html)) !== null) {
+      const fileName = decodeURIComponent(match[1]);
+      if (!platform.test(fileName)) continue;
+      const tagMatch = fileName.match(/-(cp\d+)-cp\d+-/i);
+      if (tagMatch) tags.add(tagMatch[1].toLowerCase());
     }
+    return Array.from(tags);
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchVariantPackages(cudaPath: string): Promise<VariantPackages> {
+  const [torchTags, visionTags, audioTags] = await Promise.all([
+    fetchPackagePythonTags(cudaPath, 'torch'),
+    fetchPackagePythonTags(cudaPath, 'torchvision'),
+    fetchPackagePythonTags(cudaPath, 'torchaudio'),
+  ]);
+  return {
+    torchTags,
+    vision: (visionTags?.length ?? 0) > 0,
+    audio: (audioTags?.length ?? 0) > 0,
   };
-  const [vision, audio] = await Promise.all([hasWheel('torchvision'), hasWheel('torchaudio')]);
-  return { vision, audio };
 }
 
 function buildPipList(cudaSuffix: string, vision: boolean, audio: boolean): string[] {
@@ -62,17 +94,54 @@ function buildPipList(cudaSuffix: string, vision: boolean, audio: boolean): stri
   return packages;
 }
 
-function nightlyVariant(suffix: string, major: number, minor: number): CUDAVariant {
+function cpuVariant(): CUDAVariant {
+  return {
+    label: 'CPU (CPU 模式)',
+    cudaVersion: 'cpu',
+    extraPip: ['torch', 'torchvision', 'torchaudio'],
+  };
+}
+
+function cudaVariant(index: CudaIndex, info?: VariantPackages): CUDAVariant {
+  return {
+    label: `CUDA ${index.major}.${index.minor}${index.major >= 13 ? ' (RTX 50 系列推荐)' : ''}`,
+    cudaVersion: index.suffix,
+    extraPip: buildPipList(index.suffix, info?.vision ?? true, info?.audio ?? true),
+    pythonTags: info?.torchTags,
+  };
+}
+
+function nightlyVariant(cudaPath: string, major: number, minor: number, pythonTags?: string[]): CUDAVariant {
   return {
     label: `Nightly (CUDA ${major}.${minor})`,
     cudaVersion: 'nightly',
-    extraPip: ['torch', 'torchvision', 'torchaudio', '--pre', '--index-url', `${PYTORCH_INDEX}/nightly/${suffix}`],
+    extraPip: ['torch', 'torchvision', 'torchaudio', '--pre', '--index-url', `${PYTORCH_INDEX}/${cudaPath}`],
+    pythonTags,
   };
+}
+
+async function resolveNightlyVariant(stable: CudaIndex[], nightly: CudaIndex[]): Promise<CUDAVariant | undefined> {
+  if (nightly.length > 0) {
+    const topNightly = nightly[0];
+    const tags = await fetchPackagePythonTags(`nightly/${topNightly.suffix}`, 'torch');
+    if (!tags || tags.length > 0) {
+      return nightlyVariant(`nightly/${topNightly.suffix}`, topNightly.major, topNightly.minor, tags);
+    }
+    return undefined;
+  }
+  if (stable.length > 0) {
+    const topStable = stable[0];
+    const tags = await fetchPackagePythonTags(`nightly/${topStable.suffix}`, 'torch');
+    if (!tags || tags.length > 0) {
+      return nightlyVariant(`nightly/${topStable.suffix}`, topStable.major, topStable.minor, tags);
+    }
+  }
+  return undefined;
 }
 
 function fallbackVariants(): CUDAVariant[] {
   return [
-    { label: 'CPU (CPU 模式)', cudaVersion: 'cpu', extraPip: ['torch', 'torchvision', 'torchaudio'] },
+    cpuVariant(),
     { label: 'CUDA 13.0 (RTX 50 系列推荐)', cudaVersion: 'cu130', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu130`] },
     { label: 'CUDA 12.6', cudaVersion: 'cu126', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu126`] },
     { label: 'CUDA 12.4', cudaVersion: 'cu124', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu124`] },
@@ -90,30 +159,24 @@ export async function fetchPyTorchCudaVariants(): Promise<CUDAVariant[]> {
     const stable = parseCudaIndexes(stableHtml);
     const nightly = nightlyHtml ? parseCudaIndexes(nightlyHtml) : [];
 
-    const top = stable.slice(0, 6);
-    const packageResults = await Promise.all(top.map(index => checkAvailablePackages(index.suffix)));
-    const packageMap = new Map<string, { vision: boolean; audio: boolean }>();
-    top.forEach((index, i) => packageMap.set(index.suffix, packageResults[i]));
+    const probed = stable.slice(0, PROBE_LIMIT);
+    const probedResults = await Promise.all(probed.map(index => fetchVariantPackages(index.suffix)));
+    const packageMap = new Map<string, VariantPackages>();
+    probed.forEach((index, i) => packageMap.set(index.suffix, probedResults[i]));
 
-    const variants: CUDAVariant[] = [
-      { label: 'CPU (CPU 模式)', cudaVersion: 'cpu', extraPip: ['torch', 'torchvision', 'torchaudio'] },
-      ...stable.map(index => {
-        const check = packageMap.get(index.suffix);
-        return {
-          label: `CUDA ${index.major}.${index.minor}${index.major >= 13 ? ' (RTX 50 系列推荐)' : ''}`,
-          cudaVersion: index.suffix,
-          extraPip: buildPipList(index.suffix, check?.vision ?? true, check?.audio ?? true),
-        };
-      }),
-    ];
-
-    if (nightly.length > 0) {
-      const topNightly = nightly[0];
-      variants.push(nightlyVariant(topNightly.suffix, topNightly.major, topNightly.minor));
-    } else if (stable.length > 0) {
-      const topStable = stable[0];
-      variants.push(nightlyVariant(topStable.suffix, topStable.major, topStable.minor));
+    const variants: CUDAVariant[] = [cpuVariant()];
+    for (const index of stable) {
+      const info = packageMap.get(index.suffix);
+      if (info?.torchTags && info.torchTags.length === 0) {
+        // 该索引下没有适配当前平台的 torch 轮子（例如刚出现但尚未发布对应版本）
+        continue;
+      }
+      variants.push(cudaVariant(index, info));
     }
+
+    const nightlyEntry = await resolveNightlyVariant(stable, nightly);
+    if (nightlyEntry) variants.push(nightlyEntry);
+
     return variants;
   } catch {
     return fallbackVariants();

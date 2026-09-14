@@ -113,7 +113,7 @@ WSL 环境会提示你改用 WSL 终端手动激活。
 - **按环境**：展开环境节点，点击 `Python x.y` 行；
 - **从列表选择**：执行 **切换 Python 解释器**，在快速选择中挑选 Conda 环境。
 
-扩展会写入 workspace/全局的 `python.defaultInterpreterPath`，并调用 Python 扩展的 `python.setInterpreter`。切换过程日志可在输出面板查看。
+扩展会写入 workspace/全局的 `python.defaultInterpreterPath`，并通过 Python 扩展 API 切换活动解释器（含结果校验）。切换过程日志可在输出面板查看。
 
 ### 3.4 删除 / 克隆 / 重命名
 

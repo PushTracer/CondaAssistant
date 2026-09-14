@@ -3,6 +3,7 @@ export interface CUDAVariant {
   cudaVersion: string;
   pipIndex?: string;
   extraPip?: string[];
+  pythonTags?: string[];
 }
 
 export interface AIEnvTemplate {
