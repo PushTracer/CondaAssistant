@@ -38,7 +38,7 @@ export class CondaService {
         condaPath: getCondaPath()
       };
     } catch (err) {
-      this.logger.error('获取 Conda 信息失败', err);
+      this.logger.error(vscode.l10n.t('获取 Conda 信息失败'), err);
       return null;
     }
   }
@@ -54,7 +54,7 @@ export class CondaService {
       env.packages = packages;
       env.size = size;
     } catch (err) {
-      this.logger.error(`补充环境信息失败 (${env.name})`, err);
+      this.logger.error(vscode.l10n.t('补充环境信息失败 ({0})', env.name), err);
     }
     return env;
   }
@@ -78,7 +78,7 @@ export class CondaService {
       const output = await execFileChecked(pythonPath, ['--version'], 10000);
       return output.replace('Python ', '').trim();
     } catch (err) {
-      this.logger.error(`获取 Python 版本失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('获取 Python 版本失败 ({0})', envName), err);
       return '';
     }
   }
@@ -102,7 +102,7 @@ export class CondaService {
         if (fs.existsSync(rootPrefix)) {
           return formatBytes(await getDirectorySize(rootPrefix));
         }
-        return '未知';
+        return vscode.l10n.t('未知');
       }
       const envDirs: string[] = info.envs_dirs || [];
       for (const dir of envDirs) {
@@ -115,23 +115,23 @@ export class CondaService {
       if (fs.existsSync(fallback)) {
         return formatBytes(await getDirectorySize(fallback));
       }
-      return '未知';
+      return vscode.l10n.t('未知');
     } catch (err) {
-      this.logger.error(`获取环境大小失败 (${envName})`, err);
-      return '未知';
+      this.logger.error(vscode.l10n.t('获取环境大小失败 ({0})', envName), err);
+      return vscode.l10n.t('未知');
     }
   }
 
   async createEnvironment(name: string, pythonVersion: string, packages: string[] = []): Promise<boolean> {
     try {
       const args = ['create', '-y', '-n', name, `python=${pythonVersion}`, ...packages];
-      this.logger.log(`创建环境: conda ${args.join(' ')}`);
+      this.logger.log(vscode.l10n.t('创建环境: conda {0}', args.join(' ')));
       await execConda(args, 120000);
-      this.logger.log(`环境 ${name} 创建成功`);
+      this.logger.log(vscode.l10n.t('环境 {0} 创建成功', name));
       return true;
     } catch (err) {
-      this.logger.error(`创建环境失败 (${name})`, err);
-      vscode.window.showErrorMessage(`创建环境 ${name} 失败`);
+      this.logger.error(vscode.l10n.t('创建环境失败 ({0})', name), err);
+      vscode.window.showErrorMessage(vscode.l10n.t('创建环境 {0} 失败', name));
       return false;
     }
   }
@@ -140,21 +140,22 @@ export class CondaService {
     const { promptCacheClean = true } = options;
     try {
       await execConda(['remove', '-y', '-n', name, '--all']);
-      this.logger.log(`环境 ${name} 已删除`);
+      this.logger.log(vscode.l10n.t('环境 {0} 已删除', name));
       if (promptCacheClean) {
+        const cleanLabel = vscode.l10n.t('清理缓存');
         const cleanChoice = await vscode.window.showInformationMessage(
-          `环境 ${name} 已删除。是否同时清理 Conda 包缓存以释放磁盘空间？`,
-          '清理缓存', '暂不清理'
+          vscode.l10n.t('环境 {0} 已删除。是否同时清理 Conda 包缓存以释放磁盘空间？', name),
+          cleanLabel, vscode.l10n.t('暂不清理')
         );
-        if (cleanChoice === '清理缓存') {
+        if (cleanChoice === cleanLabel) {
           await execConda(['clean', '-afy'], 120000);
-          this.logger.log('Conda 缓存已清理');
+          this.logger.log(vscode.l10n.t('Conda 缓存已清理'));
         }
       }
       return true;
     } catch (err) {
-      this.logger.error(`删除环境失败 (${name})`, err);
-      vscode.window.showErrorMessage(`删除环境 ${name} 失败: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(vscode.l10n.t('删除环境失败 ({0})', name), err);
+      vscode.window.showErrorMessage(vscode.l10n.t('删除环境 {0} 失败: {1}', name, err instanceof Error ? err.message : String(err)));
       return false;
     }
   }
@@ -162,11 +163,11 @@ export class CondaService {
   async cloneEnvironment(src: string, dst: string): Promise<boolean> {
     try {
       await execConda(['create', '-y', '-n', dst, '--clone', src], 180000);
-      this.logger.log(`环境 ${src} 已克隆到 ${dst}`);
+      this.logger.log(vscode.l10n.t('环境 {0} 已克隆到 {1}', src, dst));
       return true;
     } catch (err) {
-      this.logger.error(`克隆环境失败 (${src} -> ${dst})`, err);
-      vscode.window.showErrorMessage('克隆环境失败');
+      this.logger.error(vscode.l10n.t('克隆环境失败 ({0} -> {1})', src, dst), err);
+      vscode.window.showErrorMessage(vscode.l10n.t('克隆环境失败'));
       return false;
     }
   }
@@ -182,11 +183,11 @@ export class CondaService {
   async installPackage(envName: string, pkgName: string): Promise<boolean> {
     try {
       await execConda(['install', '-y', '-n', envName, pkgName], 120000);
-      this.logger.log(`已安装 ${pkgName} 到 ${envName}`);
+      this.logger.log(vscode.l10n.t('已安装 {0} 到 {1}', pkgName, envName));
       return true;
     } catch (err) {
-      this.logger.error(`安装包失败 (${pkgName} -> ${envName})`, err);
-      vscode.window.showErrorMessage(`安装 ${pkgName} 失败`);
+      this.logger.error(vscode.l10n.t('安装包失败 ({0} -> {1})', pkgName, envName), err);
+      vscode.window.showErrorMessage(vscode.l10n.t('安装 {0} 失败', pkgName));
       return false;
     }
   }
@@ -194,7 +195,7 @@ export class CondaService {
   async uninstallPackage(envName: string, pkgName: string): Promise<{ success: boolean; error?: string }> {
     try {
       await execConda(['remove', '-y', '-n', envName, pkgName]);
-      this.logger.log(`已从 ${envName} 卸载 ${pkgName}`);
+      this.logger.log(vscode.l10n.t('已从 {0} 卸载 {1}', envName, pkgName));
       return { success: true };
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
@@ -203,7 +204,7 @@ export class CondaService {
         .replace(/^Error: /, '')
         .split('\n')[0]
         .trim();
-      this.logger.error(`卸载包失败 (${pkgName})`, reason);
+      this.logger.error(vscode.l10n.t('卸载包失败 ({0})', pkgName), reason);
       return { success: false, error: shortReason };
     }
   }
@@ -212,7 +213,7 @@ export class CondaService {
     try {
       return await execConda(['list', '-n', envName]);
     } catch (err) {
-      this.logger.error(`列出包失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('列出包失败 ({0})', envName), err);
       return '';
     }
   }
@@ -230,7 +231,7 @@ export class CondaService {
         }))
         .filter(pkg => pkg.name);
     } catch (err) {
-      this.logger.error(`读取包列表失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('读取包列表失败 ({0})', envName), err);
       return [];
     }
   }
@@ -275,19 +276,19 @@ export class CondaService {
       packageSizes.sort((a, b) => b.size - a.size);
       const total = packageSizes.reduce((sum, pkg) => sum + pkg.size, 0);
       const realSize = fs.existsSync(envPath) ? formatBytes(await getDirectorySize(envPath)) : '?';
-      let output = `# 包分析 (${packageSizes.length} 个包)\n`;
-      output += `包净体积: ${formatBytes(total)}  |  环境目录实际大小: ${realSize}\n\n`;
-      output += `${'包名'.padEnd(30)} ${'版本'.padEnd(18)} ${'大小'.padEnd(10)}\n`;
+      let output = vscode.l10n.t('# 包分析 ({0} 个包)', String(packageSizes.length)) + '\n';
+      output += vscode.l10n.t('包净体积: {0}  |  环境目录实际大小: {1}', formatBytes(total), realSize) + '\n\n';
+      output += `${vscode.l10n.t('包名').padEnd(30)} ${vscode.l10n.t('版本').padEnd(18)} ${vscode.l10n.t('大小').padEnd(10)}\n`;
       output += `${'─'.repeat(58)}\n`;
       for (const pkg of packageSizes) {
         output += `${pkg.name.padEnd(30)} ${pkg.version.padEnd(18)} ${formatBytes(pkg.size).padStart(10)}\n`;
       }
       output += `${'─'.repeat(58)}\n`;
-      output += `${'包净体积总计'.padEnd(30)} ${''.padEnd(18)} ${formatBytes(total).padStart(10)}\n`;
-      output += `${'环境目录实际总计'.padEnd(30)} ${''.padEnd(18)} ${realSize.padStart(10)}\n`;
+      output += `${vscode.l10n.t('包净体积总计').padEnd(30)} ${''.padEnd(18)} ${formatBytes(total).padStart(10)}\n`;
+      output += `${vscode.l10n.t('环境目录实际总计').padEnd(30)} ${''.padEnd(18)} ${realSize.padStart(10)}\n`;
       return output;
     } catch (err) {
-      this.logger.error(`包体积分析失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('包体积分析失败 ({0})', envName), err);
       return await execConda(['list', '-n', envName]);
     }
   }
@@ -302,7 +303,7 @@ export class CondaService {
       }
       return [];
     } catch (err) {
-      this.logger.error(`获取包依赖失败 (${pkgName})`, err);
+      this.logger.error(vscode.l10n.t('获取包依赖失败 ({0})', pkgName), err);
       return [];
     }
   }
@@ -340,7 +341,7 @@ export class CondaService {
       }
       return true;
     } catch (err) {
-      this.logger.error(`激活环境失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('激活环境失败 ({0})', envName), err);
       return false;
     }
   }
@@ -368,18 +369,18 @@ export class CondaService {
               for (const d of parentPkg.depends) {
                 if (d.startsWith(dep)) {
                   const verMatch = d.match(/[><=]+([\d.]+)/);
-                  if (verMatch) versions.add(`${parent} 需要 ${dep}${verMatch[0]}`);
+                  if (verMatch) versions.add(vscode.l10n.t('{0} 需要 {1}{2}', parent, dep, verMatch[0]));
                 }
               }
             }
           }
           if (versions.size > 1) {
-            issues.push(`检测到潜在依赖冲突: ${dep}\n  ${Array.from(versions).join('\n  ')}`);
+            issues.push(vscode.l10n.t('检测到潜在依赖冲突: {0}\n  {1}', dep, Array.from(versions).join('\n  ')));
           }
         }
       }
     } catch (err) {
-      this.logger.error(`依赖冲突检测失败 (${envName})`, err);
+      this.logger.error(vscode.l10n.t('依赖冲突检测失败 ({0})', envName), err);
     }
     return issues;
   }

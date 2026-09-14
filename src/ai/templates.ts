@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+
 export interface CUDAVariant {
   label: string;
   cudaVersion: string;
@@ -19,7 +21,7 @@ export const AI_ENV_TEMPLATES: AIEnvTemplate[] = [
   {
     name: 'pytorch',
     label: 'PyTorch',
-    description: '深度学习框架，支持 CUDA 加速',
+    description: vscode.l10n.t('深度学习框架，支持 CUDA 加速'),
     pythonVersion: '3.12',
     pipPackages: [],
     cudaVariants: [
@@ -33,7 +35,7 @@ export const AI_ENV_TEMPLATES: AIEnvTemplate[] = [
   {
     name: 'tensorflow',
     label: 'TensorFlow',
-    description: '深度学习框架，支持 GPU 加速',
+    description: vscode.l10n.t('深度学习框架，支持 GPU 加速'),
     pythonVersion: '3.11',
     pipPackages: [],
     cudaVariants: [
@@ -43,17 +45,17 @@ export const AI_ENV_TEMPLATES: AIEnvTemplate[] = [
   },
   {
     name: 'datascience',
-    label: '数据科学基础',
+    label: vscode.l10n.t('数据科学基础'),
     description: 'NumPy, Pandas, Matplotlib, Scikit-learn, Jupyter',
     pythonVersion: '3.12',
     pipPackages: ['numpy', 'pandas', 'matplotlib', 'scikit-learn', 'jupyter', 'scipy'],
     cudaVariants: [
-      { label: '标准', cudaVersion: '', extraPip: [] },
+      { label: vscode.l10n.t('标准'), cudaVersion: '', extraPip: [] },
     ]
   },
   {
     name: 'computervision',
-    label: '计算机视觉',
+    label: vscode.l10n.t('计算机视觉'),
     description: 'OpenCV, Pillow, PyTorch, torchvision',
     pythonVersion: '3.12',
     pipPackages: ['opencv-python', 'pillow'],
@@ -64,7 +66,7 @@ export const AI_ENV_TEMPLATES: AIEnvTemplate[] = [
   },
   {
     name: 'nlp',
-    label: '自然语言处理',
+    label: vscode.l10n.t('自然语言处理'),
     description: 'Transformers, Datasets, Tokenizers, Sentence-Transformers',
     pythonVersion: '3.12',
     pipPackages: ['transformers', 'datasets', 'tokenizers', 'sentence-transformers', 'accelerate', 'evaluate'],
@@ -76,11 +78,11 @@ export const AI_ENV_TEMPLATES: AIEnvTemplate[] = [
   {
     name: 'xgb-lightgbm',
     label: 'XGBoost / LightGBM',
-    description: '梯度提升框架，含 GPU 支持',
+    description: vscode.l10n.t('梯度提升框架，含 GPU 支持'),
     pythonVersion: '3.12',
     pipPackages: ['xgboost', 'lightgbm'],
     cudaVariants: [
-      { label: '标准', cudaVersion: '', extraPip: [] },
+      { label: vscode.l10n.t('标准'), cudaVersion: '', extraPip: [] },
     ]
   }
 ];

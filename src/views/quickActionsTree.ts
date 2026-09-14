@@ -10,10 +10,10 @@ export class QuickActionsTreeProvider implements vscode.TreeDataProvider<QuickAc
 
   getChildren(): Thenable<QuickActionItem[]> {
     const actions = [
-      new QuickActionItem('create', '🔄 AI 环境一键创建', 'conda-assistant.quickCreate', 'new-file'),
-      new QuickActionItem('health', '🏥 环境健康检查', 'conda-assistant.healthCheck', 'check'),
-      new QuickActionItem('pytest', '🧪 PyTorch 功能测试', 'conda-assistant.pytorchTest', 'beaker'),
-      new QuickActionItem('interpreter', '🐍 切换解释器', 'conda-assistant.selectInterpreter', 'symbol-misc'),
+      new QuickActionItem('create', `🔄 ${vscode.l10n.t('AI 环境一键创建')}`, 'conda-assistant.quickCreate', 'new-file'),
+      new QuickActionItem('health', `🏥 ${vscode.l10n.t('环境健康检查')}`, 'conda-assistant.healthCheck', 'check'),
+      new QuickActionItem('pytest', `🧪 ${vscode.l10n.t('PyTorch 功能测试')}`, 'conda-assistant.pytorchTest', 'beaker'),
+      new QuickActionItem('interpreter', `🐍 ${vscode.l10n.t('切换解释器')}`, 'conda-assistant.selectInterpreter', 'symbol-misc'),
     ];
     return Promise.resolve(actions);
   }

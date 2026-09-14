@@ -14,7 +14,7 @@ import { registerCommands } from './commands';
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('Conda AI Manager');
   const logger = new Logger(outputChannel);
-  logger.log('Conda AI Manager 启动中...');
+  logger.log(vscode.l10n.t('Conda AI Manager 启动中...'));
 
   const conda = new CondaService(logger);
   const health = new HealthService(logger);
@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
     void initialize(logger, conda, health, remote, envTree);
   }
 
-  logger.log('Conda AI Manager 已激活');
+  logger.log(vscode.l10n.t('Conda AI Manager 已激活'));
 }
 
 async function initialize(
@@ -50,49 +50,49 @@ async function initialize(
 ): Promise<void> {
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
-    title: 'Conda AI Manager 初始化中...',
+    title: vscode.l10n.t('Conda AI Manager 初始化中...'),
   }, async (progress) => {
     try {
-      progress.report({ message: '检测 Conda 环境' });
-      logger.log('正在检测 Conda 环境...');
+      progress.report({ message: vscode.l10n.t('检测 Conda 环境') });
+      logger.log(vscode.l10n.t('正在检测 Conda 环境...'));
       const remoteEnvs = await remote.detectAllEnvironments();
-      const wslEnv = remoteEnvs.find(env => env.type === 'wsl' && env.name !== 'WSL (当前)');
+      const wslEnv = remoteEnvs.find(env => env.type === 'wsl' && env.name !== vscode.l10n.t('WSL (当前)'));
       if (remoteEnvs.length > 1) {
-        logger.log(`检测到 ${remoteEnvs.length} 个运行环境:`);
+        logger.log(vscode.l10n.t('检测到 {0} 个运行环境:', String(remoteEnvs.length)));
         for (const env of remoteEnvs) {
           logger.log(`  - ${env.type}: ${env.name}`);
         }
       }
 
-      progress.report({ message: '获取 Conda 环境列表' });
+      progress.report({ message: vscode.l10n.t('获取 Conda 环境列表') });
       const info = await conda.getCondaInfo();
       if (info) {
-        logger.log(`Conda ${info.condaVersion} | ${info.envs.length} 个环境`);
+        logger.log(vscode.l10n.t('Conda {0} | {1} 个环境', info.condaVersion, String(info.envs.length)));
         const allEnvs = [...info.envs];
         if (wslEnv) {
           try {
-            progress.report({ message: '扫描 WSL 环境' });
+            progress.report({ message: vscode.l10n.t('扫描 WSL 环境') });
             const wslEnvs = await remote.getWSLEnvironments(wslEnv.name);
             for (const wsl of wslEnvs) {
               wsl.name = `🐧 ${wsl.name} (WSL)`;
               allEnvs.push(wsl);
             }
-            logger.log(`  + ${wslEnvs.length} 个 WSL 环境`);
+            logger.log(vscode.l10n.t('  + {0} 个 WSL 环境', String(wslEnvs.length)));
           } catch (err) {
-            logger.error('WSL 环境扫描失败', err);
+            logger.error(vscode.l10n.t('WSL 环境扫描失败'), err);
           }
         }
         envTree.refresh(allEnvs);
-        logger.log('环境列表已加载');
-        progress.report({ message: `已加载 ${allEnvs.length} 个环境（展开查看详情）` });
+        logger.log(vscode.l10n.t('环境列表已加载'));
+        progress.report({ message: vscode.l10n.t('已加载 {0} 个环境（展开查看详情）', String(allEnvs.length)) });
       } else {
-        logger.log('未检测到 Conda');
+        logger.log(vscode.l10n.t('未检测到 Conda'));
         if (remote.isWSL()) {
-          vscode.window.showWarningMessage('WSL 环境中未检测到 Conda。请在 WSL 中安装 Conda。');
+          vscode.window.showWarningMessage(vscode.l10n.t('WSL 环境中未检测到 Conda。请在 WSL 中安装 Conda。'));
         } else {
-          const setupAction = '查看安装指南';
+          const setupAction = vscode.l10n.t('查看安装指南');
           vscode.window.showWarningMessage(
-            '未检测到 Conda。请安装 Miniconda 或 Anaconda，或在设置中配置 conda-assistant.condaPath。',
+            vscode.l10n.t('未检测到 Conda。请安装 Miniconda 或 Anaconda，或在设置中配置 conda-assistant.condaPath。'),
             setupAction
           ).then(action => {
             if (action === setupAction) {
@@ -103,20 +103,21 @@ async function initialize(
       }
 
       if (getConfig().healthCheckOnStartup && info) {
-        progress.report({ message: '执行健康检查...' });
-        logger.log('正在执行启动健康检查...');
+        progress.report({ message: vscode.l10n.t('执行健康检查...') });
+        logger.log(vscode.l10n.t('正在执行启动健康检查...'));
         const result = await health.runFullCheck();
         const errors = result.checks.filter(check => check.status === 'error');
         const warnings = result.checks.filter(check => check.status === 'warning');
         if (errors.length > 0) {
-          vscode.window.showWarningMessage(
-            `健康检查: ${result.score}/100 | ${errors.length} 个错误, ${warnings.length} 个警告`
-          );
+          vscode.window.showWarningMessage(vscode.l10n.t(
+            '健康检查: {0}/100 | {1} 个错误, {2} 个警告',
+            String(result.score), String(errors.length), String(warnings.length)
+          ));
         }
-        logger.log(`健康检查完成: ${result.score}/100`);
+        logger.log(vscode.l10n.t('健康检查完成: {0}/100', String(result.score)));
       }
     } catch (err) {
-      logger.error('初始化失败', err);
+      logger.error(vscode.l10n.t('初始化失败'), err);
     }
   });
 }

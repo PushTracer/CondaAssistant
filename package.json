@@ -1,7 +1,7 @@
 {
   "name": "conda-assistant",
   "displayName": "CondaAssistant",
-  "description": "智能 Conda 环境助手",
+  "description": "%description%",
   "version": "0.2.0",
   "publisher": "pushtracer",
   "license": "MIT",
@@ -46,95 +46,95 @@
         {
           "type": "tree",
           "id": "condaEnvironments",
-          "name": "Conda 环境"
+          "name": "%view.environments%"
         },
         {
           "type": "tree",
           "id": "condaQuickActions",
-          "name": "快速操作"
+          "name": "%view.quickActions%"
         }
       ]
     },
     "commands": [
       {
         "command": "conda-assistant.refresh",
-        "title": "刷新环境列表"
+        "title": "%command.refresh%"
       },
       {
         "command": "conda-assistant.createEnvironment",
-        "title": "创建环境..."
+        "title": "%command.createEnvironment%"
       },
       {
         "command": "conda-assistant.deleteEnvironment",
-        "title": "删除环境"
+        "title": "%command.deleteEnvironment%"
       },
       {
         "command": "conda-assistant.activateEnvironment",
-        "title": "激活环境"
+        "title": "%command.activateEnvironment%"
       },
       {
         "command": "conda-assistant.quickCreate",
-        "title": "AI 环境一键创建"
+        "title": "%command.quickCreate%"
       },
       {
         "command": "conda-assistant.healthCheck",
-        "title": "AI 环境健康检查"
+        "title": "%command.healthCheck%"
       },
       {
         "command": "conda-assistant.pytorchTest",
-        "title": "PyTorch 功能测试"
+        "title": "%command.pytorchTest%"
       },
       {
         "command": "conda-assistant.analyzeEnvironment",
-        "title": "环境分析"
+        "title": "%command.analyzeEnvironment%"
       },
       {
         "command": "conda-assistant.selectInterpreter",
-        "title": "切换 Python 解释器"
+        "title": "%command.selectInterpreter%"
       },
       {
         "command": "conda-assistant.switchInterpreter",
-        "title": "切换解释器（指定环境）"
+        "title": "%command.switchInterpreter%"
       },
       {
         "command": "conda-assistant.installPackage",
-        "title": "安装包"
+        "title": "%command.installPackage%"
       },
       {
         "command": "conda-assistant.uninstallPackage",
-        "title": "卸载包"
+        "title": "%command.uninstallPackage%"
       },
       {
         "command": "conda-assistant.showPackageDeps",
-        "title": "查看依赖"
+        "title": "%command.showPackageDeps%"
       },
       {
         "command": "conda-assistant.cloneEnvironment",
-        "title": "克隆环境"
+        "title": "%command.cloneEnvironment%"
       },
       {
         "command": "conda-assistant.renameEnvironment",
-        "title": "重命名环境"
+        "title": "%command.renameEnvironment%"
       },
       {
         "command": "conda-assistant.detectConflict",
-        "title": "检测依赖冲突"
+        "title": "%command.detectConflict%"
       },
       {
         "command": "conda-assistant.scanWSL",
-        "title": "扫描 WSL Conda 环境"
+        "title": "%command.scanWSL%"
       },
       {
         "command": "conda-assistant.openWSLTerminal",
-        "title": "打开 WSL 终端"
+        "title": "%command.openWSLTerminal%"
       },
       {
         "command": "conda-assistant.diskDiagnose",
-        "title": "磁盘空间诊断"
+        "title": "%command.diskDiagnose%"
       },
       {
         "command": "conda-assistant.cleanCache",
-        "title": "清理缓存（Conda / pip）"
+        "title": "%command.cleanCache%"
       }
     ],
     "menus": {
@@ -193,37 +193,37 @@
         "conda-assistant.condaPath": {
           "type": "string",
           "default": "",
-          "description": "Conda 可执行文件路径（留空自动检测）"
+          "description": "%config.condaPath.description%"
         },
         "conda-assistant.autoDetectConda": {
           "type": "boolean",
           "default": true,
-          "description": "启动时自动检测 Conda"
+          "description": "%config.autoDetectConda.description%"
         },
         "conda-assistant.defaultPythonVersion": {
           "type": "string",
           "default": "3.12",
-          "description": "创建环境时的默认 Python 版本"
+          "description": "%config.defaultPythonVersion.description%"
         },
         "conda-assistant.healthCheckOnStartup": {
           "type": "boolean",
           "default": true,
-          "description": "启动时自动进行环境健康检查"
+          "description": "%config.healthCheckOnStartup.description%"
         },
         "conda-assistant.showInactiveEnvironments": {
           "type": "boolean",
           "default": true,
-          "description": "显示非激活环境"
+          "description": "%config.showInactiveEnvironments.description%"
         },
         "conda-assistant.enableWSLSupport": {
           "type": "boolean",
           "default": true,
-          "description": "启用 WSL Conda 检测"
+          "description": "%config.enableWSLSupport.description%"
         },
         "conda-assistant.condaInstallTimeout": {
           "type": "number",
           "default": 600000,
-          "description": "Conda 安装超时时间（毫秒，默认 10 分钟）"
+          "description": "%config.condaInstallTimeout.description%"
         }
       }
     }
@@ -235,6 +235,7 @@
     "pretest": "npm run compile",
     "test": "node ./out/test/runTest.js",
     "lint": "tsc --noEmit -p ./",
+    "l10n:check": "npm run compile && node ./scripts/verify-l10n.js",
     "package": "vsce package"
   },
   "devDependencies": {

@@ -14,14 +14,14 @@ export function registerPackageCommands(ctx: CommandContext): void {
         if (!info) return;
         const pick = await vscode.window.showQuickPick(
           info.envs.map(env => ({ label: env.name, description: env.pythonVersion })),
-          { placeHolder: '选择环境' }
+          { placeHolder: vscode.l10n.t('选择环境') }
         );
         if (!pick) return;
-        const pkgName = await vscode.window.showInputBox({ prompt: '输入包名' });
+        const pkgName = await vscode.window.showInputBox({ prompt: vscode.l10n.t('输入包名') });
         if (!pkgName) return;
         await conda.installPackage(pick.label, pkgName);
       } else {
-        const pkgName = await vscode.window.showInputBox({ prompt: `安装包到 ${envName}` });
+        const pkgName = await vscode.window.showInputBox({ prompt: vscode.l10n.t('安装包到 {0}', envName) });
         if (!pkgName) return;
         await conda.installPackage(envName, pkgName);
       }
@@ -41,7 +41,7 @@ export function registerPackageCommands(ctx: CommandContext): void {
         if (!info) return undefined;
         const pick = await vscode.window.showQuickPick(
           info.envs.map(env => ({ label: env.name, description: env.pythonVersion })),
-          { placeHolder: '选择环境' }
+          { placeHolder: vscode.l10n.t('选择环境') }
         );
         return pick?.label;
       };
@@ -50,7 +50,7 @@ export function registerPackageCommands(ctx: CommandContext): void {
 
       const packages = await conda.listPackagesJSON(envName);
       if (!packages || packages.length === 0) {
-        vscode.window.showInformationMessage(`环境 ${envName} 中没有可卸载的包`);
+        vscode.window.showInformationMessage(vscode.l10n.t('环境 {0} 中没有可卸载的包', envName));
         return;
       }
       const pkgChoices = packages.map(pkg => ({
@@ -59,20 +59,20 @@ export function registerPackageCommands(ctx: CommandContext): void {
         detail: pkg.channel || '',
       }));
       const selected = await vscode.window.showQuickPick(pkgChoices, {
-        placeHolder: `选择 ${envName} 中要卸载的包`,
+        placeHolder: vscode.l10n.t('选择 {0} 中要卸载的包', envName),
         matchOnDescription: true,
       });
       if (!selected) return;
 
       const result = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `卸载 ${selected.label}` },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('卸载 {0}', selected.label) },
         async () => await conda.uninstallPackage(envName, selected.label)
       );
       if (result.success) {
-        vscode.window.showInformationMessage(`已从 ${envName} 卸载 ${selected.label}`);
+        vscode.window.showInformationMessage(vscode.l10n.t('已从 {0} 卸载 {1}', envName, selected.label));
         await refreshEnvironments(conda, envTree);
       } else {
-        vscode.window.showErrorMessage(`卸载 ${selected.label} 失败: ${result.error}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('卸载 {0} 失败: {1}', selected.label, result.error || ''));
       }
     })
   );
@@ -82,13 +82,13 @@ export function registerPackageCommands(ctx: CommandContext): void {
       const envName = getEnvName(item);
       if (!envName) return;
       if (!requireLocalEnv(envName)) return;
-      const pkgName = await vscode.window.showInputBox({ prompt: '输入要查看依赖的包名' });
+      const pkgName = await vscode.window.showInputBox({ prompt: vscode.l10n.t('输入要查看依赖的包名') });
       if (!pkgName) return;
       const deps = await conda.getPackageDeps(envName, pkgName);
       if (deps.length === 0) {
-        vscode.window.showInformationMessage(`${pkgName} 没有依赖或未找到`);
+        vscode.window.showInformationMessage(vscode.l10n.t('{0} 没有依赖或未找到', pkgName));
       } else {
-        vscode.window.showInformationMessage(`${pkgName} 依赖:\n${deps.join('\n')}`);
+        vscode.window.showInformationMessage(vscode.l10n.t('{0} 依赖:\n{1}', pkgName, deps.join('\n')));
       }
     })
   );
@@ -100,9 +100,9 @@ export function registerPackageCommands(ctx: CommandContext): void {
       if (!requireLocalEnv(envName)) return;
       const conflicts = await conda.detectConflicts(envName);
       if (conflicts.length === 0) {
-        vscode.window.showInformationMessage(`环境 ${envName} 未检测到依赖冲突`);
+        vscode.window.showInformationMessage(vscode.l10n.t('环境 {0} 未检测到依赖冲突', envName));
       } else {
-        vscode.window.showWarningMessage(`检测到 ${conflicts.length} 个潜在冲突:\n${conflicts.join('\n\n')}`);
+        vscode.window.showWarningMessage(vscode.l10n.t('检测到 {0} 个潜在冲突:\n{1}', String(conflicts.length), conflicts.join('\n\n')));
       }
     })
   );

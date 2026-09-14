@@ -2,6 +2,7 @@ import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { getConfig } from './config';
 import { formatBytes } from '../util/format';
 import { DiskSpace, DiskSpaceReport, InodeUsage } from '../models/types';
@@ -202,11 +203,11 @@ export function checkInstallSpace(envName: string, estimatedGB = 8): DiskSpaceRe
   const minBytes = estimatedGB * 1024 ** 3;
 
   if (installSpace.free > 0 && installSpace.free < minBytes) {
-    warnings.push(`安装目标 ${installPath} 剩余 ${installSpace.freeGB}，建议 ${estimatedGB}GB`);
+    warnings.push(vscode.l10n.t('安装目标 {0} 剩余 {1}，建议 {2}GB', installPath, installSpace.freeGB, String(estimatedGB)));
     sufficient = false;
   }
   if (tmpSpace.free > 0 && tmpSpace.free < 2 * 1024 ** 3) {
-    warnings.push(`临时目录 ${tmpPath} 剩余 ${tmpSpace.freeGB}（< 2GB），pip 下载会失败`);
+    warnings.push(vscode.l10n.t('临时目录 {0} 剩余 {1}（< 2GB），pip 下载会失败', tmpPath, tmpSpace.freeGB));
     sufficient = false;
   }
 
@@ -215,7 +216,7 @@ export function checkInstallSpace(envName: string, estimatedGB = 8): DiskSpaceRe
   if (inodeUsage) {
     inodes = `${inodeUsage.used}/${inodeUsage.total} (${inodeUsage.percent}%)`;
     if (inodeUsage.percent >= 90) {
-      warnings.push(`inode 使用率 ${inodeUsage.percent}%（文件数量过多），可能导致 ENOSPC`);
+      warnings.push(vscode.l10n.t('inode 使用率 {0}%（文件数量过多），可能导致 ENOSPC', String(inodeUsage.percent)));
     }
   }
 

@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as vscode from 'vscode';
 import { CUDAVariant } from './templates';
 
 const PYTORCH_INDEX = 'https://download.pytorch.org/whl';
@@ -96,15 +97,18 @@ function buildPipList(cudaSuffix: string, vision: boolean, audio: boolean): stri
 
 function cpuVariant(): CUDAVariant {
   return {
-    label: 'CPU (CPU 模式)',
+    label: vscode.l10n.t('CPU (CPU 模式)'),
     cudaVersion: 'cpu',
     extraPip: ['torch', 'torchvision', 'torchaudio'],
   };
 }
 
 function cudaVariant(index: CudaIndex, info?: VariantPackages): CUDAVariant {
+  const label = index.major >= 13
+    ? vscode.l10n.t('CUDA {0}.{1} (RTX 50 系列推荐)', String(index.major), String(index.minor))
+    : vscode.l10n.t('CUDA {0}.{1}', String(index.major), String(index.minor));
   return {
-    label: `CUDA ${index.major}.${index.minor}${index.major >= 13 ? ' (RTX 50 系列推荐)' : ''}`,
+    label,
     cudaVersion: index.suffix,
     extraPip: buildPipList(index.suffix, info?.vision ?? true, info?.audio ?? true),
     pythonTags: info?.torchTags,
@@ -113,7 +117,7 @@ function cudaVariant(index: CudaIndex, info?: VariantPackages): CUDAVariant {
 
 function nightlyVariant(cudaPath: string, major: number, minor: number, pythonTags?: string[]): CUDAVariant {
   return {
-    label: `Nightly (CUDA ${major}.${minor})`,
+    label: vscode.l10n.t('Nightly (CUDA {0}.{1})', String(major), String(minor)),
     cudaVersion: 'nightly',
     extraPip: ['torch', 'torchvision', 'torchaudio', '--pre', '--index-url', `${PYTORCH_INDEX}/${cudaPath}`],
     pythonTags,
@@ -142,7 +146,7 @@ async function resolveNightlyVariant(stable: CudaIndex[], nightly: CudaIndex[]):
 function fallbackVariants(): CUDAVariant[] {
   return [
     cpuVariant(),
-    { label: 'CUDA 13.0 (RTX 50 系列推荐)', cudaVersion: 'cu130', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu130`] },
+    { label: vscode.l10n.t('CUDA 13.0 (RTX 50 系列推荐)'), cudaVersion: 'cu130', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu130`] },
     { label: 'CUDA 12.6', cudaVersion: 'cu126', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu126`] },
     { label: 'CUDA 12.4', cudaVersion: 'cu124', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu124`] },
     { label: 'CUDA 12.1', cudaVersion: 'cu121', extraPip: ['torch', 'torchvision', 'torchaudio', '--index-url', `${PYTORCH_INDEX}/cu121`] },

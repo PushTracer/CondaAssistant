@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 import { Logger } from '../core/logger';
 import { execConda, execFileChecked } from '../core/shell';
 import { getEnvPath } from '../core/platform';
@@ -28,7 +29,7 @@ export class HealthService {
       const root = data.conda_prefix || '';
       return envs.map((envPath: string) => (envPath === root ? 'base' : path.basename(envPath)));
     } catch (err) {
-      this.logger.error('健康检查: 读取环境列表失败', err);
+      this.logger.error(vscode.l10n.t('健康检查: 读取环境列表失败'), err);
       return [];
     }
   }
@@ -58,13 +59,13 @@ export class HealthService {
       checks.push({
         name: 'Conda',
         status: 'ok',
-        message: `Conda ${version} 已安装`
+        message: vscode.l10n.t('Conda {0} 已安装', version)
       });
     } catch {
       checks.push({
         name: 'Conda',
         status: 'error',
-        message: '未找到 Conda，请安装 Miniconda 或 Anaconda'
+        message: vscode.l10n.t('未找到 Conda，请安装 Miniconda 或 Anaconda')
       });
     }
   }
@@ -85,9 +86,9 @@ export class HealthService {
       return `${env} (!)`;
     }).join(', ');
     checks.push({
-      name: '环境',
+      name: vscode.l10n.t('环境'),
       status: envs.length > 0 ? 'ok' : 'warning',
-      message: `${envs.length} 个环境 | Python ${baseVer} | ${details}`
+      message: vscode.l10n.t('{0} 个环境 | Python {1} | {2}', String(envs.length), baseVer, details)
     });
   }
 
@@ -107,11 +108,11 @@ export class HealthService {
         const cudaAvailable = lines[1]?.trim() === 'True';
         found = true;
         checks.push({
-          name: `PyTorch (${env})`,
+          name: vscode.l10n.t('PyTorch ({0})', env),
           status: cudaAvailable ? 'ok' : 'warning',
           message: cudaAvailable
-            ? `PyTorch ${version} (CUDA 可用)`
-            : `PyTorch ${version} (CUDA 不可用)`
+            ? vscode.l10n.t('PyTorch {0} (CUDA 可用)', version)
+            : vscode.l10n.t('PyTorch {0} (CUDA 不可用)', version)
         });
         break;
       } catch {
@@ -122,7 +123,7 @@ export class HealthService {
       checks.push({
         name: 'PyTorch',
         status: 'warning',
-        message: '未在任何环境中检测到 PyTorch'
+        message: vscode.l10n.t('未在任何环境中检测到 PyTorch')
       });
     }
   }
@@ -143,11 +144,11 @@ export class HealthService {
         const gpuCount = parseInt(lines[1]?.trim() || '0');
         found = true;
         checks.push({
-          name: `TensorFlow (${env})`,
+          name: vscode.l10n.t('TensorFlow ({0})', env),
           status: gpuCount > 0 ? 'ok' : 'warning',
           message: gpuCount > 0
-            ? `TensorFlow ${version} (GPU: ${gpuCount})`
-            : `TensorFlow ${version} (仅 CPU)`
+            ? vscode.l10n.t('TensorFlow {0} (GPU: {1})', version, String(gpuCount))
+            : vscode.l10n.t('TensorFlow {0} (仅 CPU)', version)
         });
         break;
       } catch {
@@ -158,7 +159,7 @@ export class HealthService {
       checks.push({
         name: 'TensorFlow',
         status: 'info',
-        message: '未在任何环境中检测到 TensorFlow'
+        message: vscode.l10n.t('未在任何环境中检测到 TensorFlow')
       });
     }
   }
@@ -176,7 +177,7 @@ export class HealthService {
         const out = await execFileChecked(pipPath, ['--version'], 5000);
         found = true;
         checks.push({
-          name: `pip (${env})`,
+          name: vscode.l10n.t('pip ({0})', env),
           status: 'ok',
           message: out.split(' ').slice(0, 2).join(' ')
         });
@@ -189,7 +190,7 @@ export class HealthService {
       checks.push({
         name: 'pip',
         status: 'warning',
-        message: '未检测到 pip'
+        message: vscode.l10n.t('未检测到 pip')
       });
     }
   }

@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { HealthCheckResult, HealthStatus } from '../models/types';
 
 const STATUS_ICON: Record<HealthStatus, string> = {
@@ -44,7 +45,7 @@ body{font-family:-apple-system,sans-serif;padding:20px;background:#1e1e1e;color:
 .cn{font-weight:bold;min-width:120px}
 .cm{color:#aaa}
 </style></head><body>
-<div class=score><div class=sv style=color:${scoreColor}>${result.score}</div><div>/ 100</div><div style=font-size:14px;color:#888;margin-top:8px>Health Score</div></div>
+<div class=score><div class=sv style=color:${scoreColor}>${result.score}</div><div>/ 100</div><div style=font-size:14px;color:#888;margin-top:8px>${escapeHtml(vscode.l10n.t('健康评分'))}</div></div>
 <div class=checks>${checks}</div>
 </body></html>`;
 }

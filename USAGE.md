@@ -60,6 +60,16 @@ code --install-extension conda-assistant-0.2.0.vsix
 { "conda-assistant.condaPath": "C:\\Users\\you\\miniconda3\\Scripts\\conda.exe" }
 ```
 
+### 1.4 界面语言
+
+扩展支持中文（默认）与英文，跟随 VS Code 显示语言自动切换：
+
+- 命令标题、视图名、设置说明：`package.nls.json`（中文）/ `package.nls.en.json`（英文）；
+- 运行时提示、输出面板日志、健康检查报告：`l10n/bundle.l10n.en.json`；
+- PyTorch 功能测试脚本的输出文案也会自动切换（扩展根据 VS Code 语言传入 `--lang zh|en`）。
+
+切换到英文界面：`Ctrl+Shift+P` → **Configure Display Language** → 选择 `en` 并重载窗口。
+
 ---
 
 ## 2. 界面说明
@@ -334,7 +344,8 @@ npm install          # 安装依赖
 npm run compile      # 编译到 out/
 npm run watch        # 监听编译
 npm run lint         # 类型检查（tsc --noEmit）
-npm test             # 启动 VS Code 扩展测试（6 个用例）
+npm run l10n:check   # 校验英文翻译是否覆盖全部 l10n.t 文案
+npm test             # 启动 VS Code 扩展测试（9 个用例）
 npm run package      # 打包生成 conda-assistant-0.2.0.vsix
 ```
 
@@ -346,8 +357,16 @@ src/
 ├── models/types.ts     共享类型
 ├── core/               logger / config / platform / shell
 ├── util/               纯工具函数（format / parse）
-├── services/           conda / health / interpreter / backup / remote / disk
+├── services/           conda / health / interpreter / remote / disk / pytorchTest
 ├── ai/                 环境模板与 PyTorch CUDA 索引抓取
 ├── views/              环境树 / 快速操作树 / 健康面板
 └── commands/           命令注册（按领域拆分）
+resources/
+└── pytorch_test.py     PyTorch 功能测试脚本（支持 --lang zh|en）
+package.nls.json        声明式文案（中文默认）
+package.nls.en.json     声明式文案（英文）
+l10n/
+└── bundle.l10n.en.json 运行时文案英文翻译
+scripts/
+└── verify-l10n.js      翻译覆盖率校验脚本
 ```

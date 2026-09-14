@@ -36,44 +36,44 @@ export class InterpreterService {
     try {
       const pyPath = this.getEnvPythonPath(envName);
       if (!pyPath) {
-        this.logger.log(`未找到环境 ${envName} 的 Python 路径`);
+        this.logger.log(vscode.l10n.t('未找到环境 {0} 的 Python 路径', envName));
         return false;
       }
       return await this.setInterpreter(pyPath, envName);
     } catch (err) {
-      this.logger.error('自动选择解释器失败', err);
+      this.logger.error(vscode.l10n.t('自动选择解释器失败'), err);
       return false;
     }
   }
 
   private async setInterpreter(pyPath: string, envName: string): Promise<boolean> {
     try {
-      this.logger.log(`[setInterpreter] 切换解释器: ${envName} -> ${pyPath}`);
+      this.logger.log(vscode.l10n.t('[setInterpreter] 切换解释器: {0} -> {1}', envName, pyPath));
 
       await this.writeSettings(pyPath);
 
       const pythonExtension = vscode.extensions.getExtension(PYTHON_EXTENSION_ID);
       if (!pythonExtension) {
-        this.logger.log('[setInterpreter] 未安装 Python 扩展，仅写入配置，安装并重载窗口后生效');
+        this.logger.log(vscode.l10n.t('[setInterpreter] 未安装 Python 扩展，仅写入配置，安装并重载窗口后生效'));
         return false;
       }
 
       const envsExtension = vscode.extensions.getExtension('ms-python.vscode-python-envs');
       const useEnvsExtension = vscode.workspace.getConfiguration('python').get<boolean>('useEnvsExtension');
       if (envsExtension?.isActive && useEnvsExtension !== false) {
-        this.logger.log('[setInterpreter] 检测到 "Python Environments" 扩展接管了解释器切换；若切换不生效，请在设置中关闭 python.useEnvsExtension 或禁用 ms-python.vscode-python-envs');
+        this.logger.log(vscode.l10n.t('[setInterpreter] 检测到 "Python Environments" 扩展接管了解释器切换；若切换不生效，请在设置中关闭 python.useEnvsExtension 或禁用 ms-python.vscode-python-envs'));
       }
 
       const applied = await this.applyInterpreter(pyPath);
       if (!applied) {
-        this.logger.log('[setInterpreter] 自动切换失败，请在命令面板执行 "Python: Select Interpreter" 手动选择');
+        this.logger.log(vscode.l10n.t('[setInterpreter] 自动切换失败，请在命令面板执行 "Python: Select Interpreter" 手动选择'));
         return false;
       }
 
-      this.logger.log(`已自动选择解释器: ${envName} (${pyPath})`);
+      this.logger.log(vscode.l10n.t('已自动选择解释器: {0} ({1})', envName, pyPath));
       return true;
     } catch (err) {
-      this.logger.error('设置解释器失败', err);
+      this.logger.error(vscode.l10n.t('设置解释器失败'), err);
       return false;
     }
   }
@@ -97,29 +97,29 @@ export class InterpreterService {
       settings['python.defaultInterpreterPath'] = pyPath;
       settings['python.terminal.activateEnvironment'] = false;
       await vscode.workspace.fs.writeFile(settingsUri, new TextEncoder().encode(JSON.stringify(settings, null, 2)));
-      this.logger.log('[setInterpreter] 已写入 workspace settings.json');
+      this.logger.log(vscode.l10n.t('[setInterpreter] 已写入 workspace settings.json'));
     } else {
-      this.logger.log('[setInterpreter] 无 workspace folder，跳过 workspace 写入');
+      this.logger.log(vscode.l10n.t('[setInterpreter] 无 workspace folder，跳过 workspace 写入'));
     }
 
     const config = vscode.workspace.getConfiguration('python');
     try {
       await config.update('defaultInterpreterPath', pyPath, vscode.ConfigurationTarget.Global);
-      this.logger.log('[setInterpreter] 已写入 Global 设置');
+      this.logger.log(vscode.l10n.t('[setInterpreter] 已写入 Global 设置'));
     } catch (err) {
-      this.logger.error('[setInterpreter] 写入 Global defaultInterpreterPath 失败', err);
+      this.logger.error(vscode.l10n.t('[setInterpreter] 写入 Global defaultInterpreterPath 失败'), err);
     }
     try {
       await config.update('terminal.activateEnvironment', false, vscode.ConfigurationTarget.Global);
     } catch (err) {
-      this.logger.error('[setInterpreter] 写入 Global terminal.activateEnvironment 失败', err);
+      this.logger.error(vscode.l10n.t('[setInterpreter] 写入 Global terminal.activateEnvironment 失败'), err);
     }
     if (workspaceFolder) {
       try {
         await config.update('defaultInterpreterPath', pyPath, vscode.ConfigurationTarget.Workspace);
         await config.update('terminal.activateEnvironment', false, vscode.ConfigurationTarget.Workspace);
       } catch (err) {
-        this.logger.error('[setInterpreter] Workspace 设置写入失败（可忽略）', err);
+        this.logger.error(vscode.l10n.t('[setInterpreter] Workspace 设置写入失败（可忽略）'), err);
       }
     }
   }
@@ -146,15 +146,15 @@ export class InterpreterService {
       try {
         await attempt.run();
         commandSucceeded = true;
-        this.logger.log(`[setInterpreter] 已调用 ${attempt.name}`);
+        this.logger.log(vscode.l10n.t('[setInterpreter] 已调用 {0}', attempt.name));
       } catch (err) {
-        this.logger.error(`[setInterpreter] ${attempt.name} 失败`, err);
+        this.logger.error(vscode.l10n.t('[setInterpreter] {0} 失败', attempt.name), err);
       }
       await delay(250);
       const check = await this.isActiveInterpreter(pyPath);
       if (check === true) return true;
       if (check === undefined && commandSucceeded) {
-        this.logger.log('[setInterpreter] 当前 Python 扩展不支持校验，按调用成功处理');
+        this.logger.log(vscode.l10n.t('[setInterpreter] 当前 Python 扩展不支持校验，按调用成功处理'));
         return true;
       }
     }
@@ -188,10 +188,10 @@ export class InterpreterService {
       await environments.updateActiveEnvironmentPath(target);
       await delay(250);
       const check = await this.isActiveInterpreter(pyPath);
-      this.logger.log(`[setInterpreter] 切换后活动解释器: ${await this.describeActiveInterpreter()}`);
+      this.logger.log(vscode.l10n.t('[setInterpreter] 切换后活动解释器: {0}', await this.describeActiveInterpreter()));
       return check !== false;
     } catch (err) {
-      this.logger.error('[setInterpreter] Python API 切换失败', err);
+      this.logger.error(vscode.l10n.t('[setInterpreter] Python API 切换失败'), err);
       return false;
     }
   }
@@ -220,7 +220,7 @@ export class InterpreterService {
       }
       return false;
     } catch (err) {
-      this.logger.error('[setInterpreter] 校验活动解释器失败', err);
+      this.logger.error(vscode.l10n.t('[setInterpreter] 校验活动解释器失败'), err);
       return undefined;
     }
   }
@@ -229,12 +229,12 @@ export class InterpreterService {
     try {
       const api = await this.getPythonApi();
       const environments = api?.environments;
-      if (!environments) return '未知';
+      if (!environments) return vscode.l10n.t('未知');
       const active = typeof environments.getActiveEnvironmentPath === 'function'
         ? environments.getActiveEnvironmentPath()
         : undefined;
       const activePath = typeof active === 'string' ? active : active?.path;
-      if (!activePath) return '未知';
+      if (!activePath) return vscode.l10n.t('未知');
       let executable = '';
       try {
         const resolved = await environments.resolveEnvironment(active);
@@ -244,7 +244,7 @@ export class InterpreterService {
       }
       return executable ? `${activePath} (${executable})` : String(activePath);
     } catch {
-      return '未知';
+      return vscode.l10n.t('未知');
     }
   }
 
@@ -270,7 +270,7 @@ export class InterpreterService {
         }
       }
     } catch (err) {
-      this.logger.error('检测 Conda 解释器失败', err);
+      this.logger.error(vscode.l10n.t('检测 Conda 解释器失败'), err);
     }
   }
 
@@ -279,7 +279,7 @@ export class InterpreterService {
       const condaInterpreters: PythonInterpreter[] = [];
       await this.detectCondaInterpreters(condaInterpreters);
       if (condaInterpreters.length === 0) {
-        vscode.window.showWarningMessage('未检测到任何 Conda 环境');
+        vscode.window.showWarningMessage(vscode.l10n.t('未检测到任何 Conda 环境'));
         return false;
       }
       const items = condaInterpreters.map(interpreter => ({
@@ -288,14 +288,14 @@ export class InterpreterService {
         detail: interpreter.path,
       }));
       const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: '选择要切换的 Conda 环境'
+        placeHolder: vscode.l10n.t('选择要切换的 Conda 环境')
       });
       if (!selected) return false;
       const ok = await this.autoSelectCondaEnv(selected.label);
       if (!ok) {
-        const action = '打开选择界面';
+        const action = vscode.l10n.t('打开选择界面');
         const choice = await vscode.window.showWarningMessage(
-          `未能自动切换解释器到 ${selected.label}，请手动执行 "Python: Select Interpreter"。`,
+          vscode.l10n.t('未能自动切换解释器到 {0}，请手动执行 "Python: Select Interpreter"。', selected.label),
           action
         );
         if (choice === action) {
@@ -304,7 +304,7 @@ export class InterpreterService {
       }
       return ok;
     } catch (err) {
-      this.logger.error('选择解释器失败', err);
+      this.logger.error(vscode.l10n.t('选择解释器失败'), err);
       return false;
     }
   }

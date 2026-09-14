@@ -23,9 +23,9 @@ export function registerAiCommands(ctx: CommandContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('conda-assistant.healthCheck', async () => {
       const result = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'AI 环境健康检查' },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('AI 环境健康检查') },
         async (progress) => {
-          progress.report({ message: '正在检测 Conda/Python/CUDA/Torch...' });
+          progress.report({ message: vscode.l10n.t('正在检测 Conda/Python/CUDA/Torch...') });
           return await health.runFullCheck();
         }
       );
@@ -33,13 +33,13 @@ export function registerAiCommands(ctx: CommandContext): void {
         healthPanel.reveal(vscode.ViewColumn.One);
       } else {
         healthPanel = vscode.window.createWebviewPanel(
-          'healthCheck', 'AI 环境健康检查', vscode.ViewColumn.One,
+          'healthCheck', vscode.l10n.t('AI 环境健康检查'), vscode.ViewColumn.One,
           { enableScripts: true }
         );
         healthPanel.onDidDispose(() => { healthPanel = undefined; });
       }
       healthPanel.webview.html = renderHealthPanel(result);
-      logger.log(`健康检查完成: ${result.score}/100`);
+      logger.log(vscode.l10n.t('健康检查完成: {0}/100', String(result.score)));
     })
   );
 
@@ -51,7 +51,7 @@ export function registerAiCommands(ctx: CommandContext): void {
         detail: `Python ${template.pythonVersion}`,
         template
       })),
-      { placeHolder: '选择 AI 环境模板' }
+      { placeHolder: vscode.l10n.t('选择 AI 环境模板') }
     );
     if (!templateChoice) return;
     const template = templateChoice.template;
@@ -89,7 +89,7 @@ export function registerAiCommands(ctx: CommandContext): void {
           extraPip: variant.extraPip || [],
           pythonTags: variant.pythonTags
         })),
-        { placeHolder: `选择 ${template.label} 版本` }
+        { placeHolder: vscode.l10n.t('选择 {0} 版本', template.label) }
       );
       if (!choice) return;
       cudaChoice = choice;
@@ -97,65 +97,65 @@ export function registerAiCommands(ctx: CommandContext): void {
 
     const defaultName = template.name + (cudaChoice.value ? '-' + cudaChoice.value : '');
     const envName = await vscode.window.showInputBox({
-      prompt: '环境名称',
+      prompt: vscode.l10n.t('环境名称'),
       value: defaultName,
-      validateInput: (value) => (value ? null : '环境名不能为空')
+      validateInput: (value) => (value ? null : vscode.l10n.t('环境名不能为空'))
     });
     if (!envName) return;
 
     const pyVersion = await vscode.window.showInputBox({
-      prompt: 'Python 版本',
+      prompt: vscode.l10n.t('Python 版本'),
       value: template.pythonVersion,
-      validateInput: (value) => (/^\d+\.\d+$/.test(value) ? null : '格式: x.y (如 3.12)')
+      validateInput: (value) => (/^\d+\.\d+$/.test(value) ? null : vscode.l10n.t('格式: x.y (如 3.12)'))
     });
     if (!pyVersion) return;
 
     const pyTag = `cp${pyVersion.replace(/\./g, '')}`;
     if (cudaChoice.pythonTags && cudaChoice.pythonTags.length > 0 && !cudaChoice.pythonTags.includes(pyTag)) {
       const proceed = await vscode.window.showWarningMessage(
-        `所选版本没有适配 Python ${pyVersion} 的 torch 包（该索引可用: ${cudaChoice.pythonTags.join(' / ')}），继续安装大概率失败。`,
+        vscode.l10n.t('所选版本没有适配 Python {0} 的 torch 包（该索引可用: {1}），继续安装大概率失败。', pyVersion, cudaChoice.pythonTags.join(' / ')),
         { modal: true },
-        '仍然继续', '返回重选'
+        vscode.l10n.t('仍然继续'), vscode.l10n.t('返回重选')
       );
-      if (proceed !== '仍然继续') return;
+      if (proceed !== vscode.l10n.t('仍然继续')) return;
     }
 
     const allPipPackages = [...new Set([...template.pipPackages, ...(cudaChoice.extraPip || [])])];
     const extraPipStr = await vscode.window.showInputBox({
-      prompt: '额外 pip 包（空格分隔，可选）',
-      placeHolder: '例如: wandb tensorboard tqdm',
+      prompt: vscode.l10n.t('额外 pip 包（空格分隔，可选）'),
+      placeHolder: vscode.l10n.t('例如: wandb tensorboard tqdm'),
     });
     if (extraPipStr) {
       allPipPackages.push(...extraPipStr.split(/\s+/).filter(Boolean));
     }
 
     const timeout = getConfig().condaInstallTimeout || 600000;
-    const outputChannel = vscode.window.createOutputChannel(`安装 ${envName}`);
+    const outputChannel = vscode.window.createOutputChannel(vscode.l10n.t('安装 {0}', envName));
     commandCtx.context.subscriptions.push(outputChannel);
     outputChannel.show(true);
-    outputChannel.appendLine(`创建环境 ${envName} (Python ${pyVersion})`);
+    outputChannel.appendLine(vscode.l10n.t('创建环境 {0} (Python {1})', envName, pyVersion));
 
     const report = checkInstallSpace(envName);
     if (!report.sufficient || report.warnings.length > 0) {
-      outputChannel.appendLine(`磁盘检查: HOME=${report.home.freeGB}, /tmp=${report.tmp.freeGB}, inode=${report.inodes}`);
+      outputChannel.appendLine(vscode.l10n.t('磁盘检查: HOME={0}, /tmp={1}, inode={2}', report.home.freeGB, report.tmp.freeGB, report.inodes));
       for (const warning of report.warnings) outputChannel.appendLine(`  ⚠ ${warning}`);
-      const cleanAction = '清理缓存并继续';
+      const cleanAction = vscode.l10n.t('清理缓存并继续');
       const userChoice = await vscode.window.showWarningMessage(
-        `安装环境 ${envName} 前检测到 ${report.warnings.length} 个问题`,
+        vscode.l10n.t('安装环境 {0} 前检测到 {1} 个问题', envName, String(report.warnings.length)),
         { modal: true, detail: report.warnings.join('\n') },
-        cleanAction, '忽略风险继续'
+        cleanAction, vscode.l10n.t('忽略风险继续')
       );
       if (!userChoice) return;
       if (userChoice === cleanAction) {
-        outputChannel.appendLine('>>> 清理 conda 缓存...');
+        outputChannel.appendLine(vscode.l10n.t('>>> 清理 conda 缓存...'));
         await execConda(['clean', '-afy'], 60000);
-        outputChannel.appendLine('>>> 清理 pip 缓存...');
+        outputChannel.appendLine(vscode.l10n.t('>>> 清理 pip 缓存...'));
         await disk.purgePipCache();
         const after = getFreeDiskSpace();
-        outputChannel.appendLine(`清理后可用空间: ${after.freeGB}`);
+        outputChannel.appendLine(vscode.l10n.t('清理后可用空间: {0}', after.freeGB));
         const afterReport = checkInstallSpace(envName);
         if (!afterReport.sufficient) {
-          vscode.window.showErrorMessage(`清理后仍有问题:\n${afterReport.warnings.join('\n')}`);
+          vscode.window.showErrorMessage(vscode.l10n.t('清理后仍有问题:\n{0}', afterReport.warnings.join('\n')));
           return;
         }
       }
@@ -166,9 +166,9 @@ export function registerAiCommands(ctx: CommandContext): void {
     let torchUnavailable = false;
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `创建 ${envName}`, cancellable: true },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('创建 {0}', envName), cancellable: true },
         async (progress, token) => {
-          outputChannel.appendLine('>>> conda create -n ' + envName + ' python=' + pyVersion);
+          outputChannel.appendLine(vscode.l10n.t('>>> conda create -n {0} python={1}', envName, pyVersion));
           await spawnConda(
             ['create', '-y', '-n', envName, `python=${pyVersion}`],
             (line) => {
@@ -183,36 +183,39 @@ export function registerAiCommands(ctx: CommandContext): void {
                 }
               }
             },
-            (err) => { outputChannel.appendLine(`conda 错误: ${err.message}`); },
+            (err) => { outputChannel.appendLine(vscode.l10n.t('conda 错误: {0}', err.message)); },
             timeout
           );
           if (token.isCancellationRequested) {
-            outputChannel.appendLine('已取消');
+            outputChannel.appendLine(vscode.l10n.t('已取消'));
             return;
           }
 
           const pipPath = getEnvPipPath(envName);
           if (!fs.existsSync(pipPath)) {
+            const installPipLabel = vscode.l10n.t('安装 pip');
+            const skipPipLabel = vscode.l10n.t('跳过');
             const installPip = await vscode.window.showWarningMessage(
-              `环境 ${envName} 中未检测到 pip，是否安装？`,
+              vscode.l10n.t('环境 {0} 中未检测到 pip，是否安装？', envName),
               { modal: true },
-              '安装 pip', '跳过'
+              installPipLabel, skipPipLabel
             );
-            if (!installPip || installPip === '跳过') {
-              outputChannel.appendLine('跳过 pip 安装，将尝试 python -m pip');
+            if (!installPip || installPip === skipPipLabel) {
+              outputChannel.appendLine(vscode.l10n.t('跳过 pip 安装，将尝试 python -m pip'));
             } else {
-              outputChannel.appendLine('>>> conda install pip');
+              outputChannel.appendLine(vscode.l10n.t('>>> conda install pip'));
               await spawnConda(
                 ['install', '-y', '-n', envName, 'pip'],
                 (line) => outputChannel.appendLine(line),
-                (err) => { outputChannel.appendLine(`pip 安装错误: ${err.message}`); },
+                (err) => { outputChannel.appendLine(vscode.l10n.t('pip 安装错误: {0}', err.message)); },
                 120000
               );
             }
           }
 
           if (allPipPackages.length > 0) {
-            outputChannel.appendLine(`\n>>> ${getEnvPipPath(envName)} install ${allPipPackages.join(' ')}`);
+            outputChannel.appendLine('');
+            outputChannel.appendLine(vscode.l10n.t('>>> {0} install {1}', getEnvPipPath(envName), allPipPackages.join(' ')));
             await spawnPipInEnv(
               envName,
               ['install', ...allPipPackages],
@@ -227,30 +230,32 @@ export function registerAiCommands(ctx: CommandContext): void {
                   progress.report({ message: lastSpeed });
                 }
               },
-              (err) => { outputChannel.appendLine(`pip 错误: ${err.message}`); },
+              (err) => { outputChannel.appendLine(vscode.l10n.t('pip 错误: {0}', err.message)); },
               timeout
             );
           }
           if (token.isCancellationRequested) {
-            outputChannel.appendLine('已取消');
+            outputChannel.appendLine(vscode.l10n.t('已取消'));
             return;
           }
           completed = true;
-          outputChannel.appendLine('\n环境创建完成！');
+          outputChannel.appendLine('');
+          outputChannel.appendLine(vscode.l10n.t('环境创建完成！'));
         }
       );
       if (completed) {
-        vscode.window.showInformationMessage(`环境 ${envName} 创建完成！`);
+        vscode.window.showInformationMessage(vscode.l10n.t('环境 {0} 创建完成！', envName));
       } else {
-        vscode.window.showWarningMessage(`环境 ${envName} 创建已取消`);
+        vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 创建已取消', envName));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      outputChannel.appendLine(`\n创建失败: ${message}`);
+      outputChannel.appendLine('');
+      outputChannel.appendLine(vscode.l10n.t('创建失败: {0}', message));
       if (torchUnavailable) {
-        outputChannel.appendLine('提示: 该 CUDA 索引下没有适配当前 Python 版本的 torch 轮子，请更换 CUDA 版本或 Python 版本后重试。');
+        outputChannel.appendLine(vscode.l10n.t('提示: 该 CUDA 索引下没有适配当前 Python 版本的 torch 轮子，请更换 CUDA 版本或 Python 版本后重试。'));
       }
-      vscode.window.showErrorMessage(`环境创建失败: ${message}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('环境创建失败: {0}', message));
     }
   }
 }

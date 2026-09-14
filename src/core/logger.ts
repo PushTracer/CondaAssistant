@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 export function errorToString(err: unknown): string {
   if (err instanceof Error) return err.message;
-  if (err === undefined || err === null) return '未知错误';
+  if (err === undefined || err === null) return vscode.l10n.t('未知错误');
   return String(err);
 }
 

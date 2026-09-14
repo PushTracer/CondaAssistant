@@ -14,23 +14,24 @@ export function registerTestCommands(ctx: CommandContext): void {
         if (!info) return;
         const pick = await vscode.window.showQuickPick(
           info.envs.map(env => ({ label: env.name, description: env.pythonVersion || '' })),
-          { placeHolder: '选择要测试的 Conda 环境' }
+          { placeHolder: vscode.l10n.t('选择要测试的 Conda 环境') }
         );
         if (!pick) return;
         envName = pick.label;
       }
       if (!requireLocalEnv(envName)) return;
       if (pytorchTest.isRunning(envName)) {
-        vscode.window.showWarningMessage(`环境 ${envName} 的 PyTorch 测试正在进行中`);
+        vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 的 PyTorch 测试正在进行中', envName));
         return;
       }
 
       const scriptPath = context.asAbsolutePath(path.join('resources', 'pytorch_test.py'));
-      const outputChannel = vscode.window.createOutputChannel(`PyTorch 测试 ${envName}`);
+      const language: 'zh' | 'en' = vscode.env.language.toLowerCase().startsWith('en') ? 'en' : 'zh';
+      const outputChannel = vscode.window.createOutputChannel(vscode.l10n.t('PyTorch 测试 {0}', envName));
       context.subscriptions.push(outputChannel);
       outputChannel.show(true);
-      outputChannel.appendLine(`PyTorch 功能测试: ${envName}`);
-      outputChannel.appendLine(`脚本: ${scriptPath}`);
+      outputChannel.appendLine(vscode.l10n.t('PyTorch 功能测试: {0}', envName));
+      outputChannel.appendLine(vscode.l10n.t('脚本: {0}', scriptPath));
       outputChannel.appendLine('');
 
       let pass = 0;
@@ -39,13 +40,13 @@ export function registerTestCommands(ctx: CommandContext): void {
       let torchMissing = false;
 
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `PyTorch 测试 ${envName}` },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('PyTorch 测试 {0}', envName) },
         async (progress) => {
           try {
-            await pytorchTest.run(envName, scriptPath, (line) => {
+            await pytorchTest.run(envName, scriptPath, language, (line) => {
               outputChannel.appendLine(line);
               const currentTest = line.match(/^\[TEST\]\s*(.+)$/);
-              if (currentTest) progress.report({ message: `正在测试: ${currentTest[1]}` });
+              if (currentTest) progress.report({ message: vscode.l10n.t('正在测试: {0}', currentTest[1]) });
               const summary = line.match(/^(PASS|WARN|FAIL)\s*:\s*(\d+)/);
               if (summary) {
                 const count = parseInt(summary[2], 10);
@@ -56,24 +57,25 @@ export function registerTestCommands(ctx: CommandContext): void {
               if (/No module named ['"]torch['"]/.test(line)) torchMissing = true;
             });
           } catch (err) {
-            outputChannel.appendLine(`\n运行失败: ${err instanceof Error ? err.message : String(err)}`);
+            outputChannel.appendLine('');
+            outputChannel.appendLine(vscode.l10n.t('运行失败: {0}', err instanceof Error ? err.message : String(err)));
           }
         }
       );
 
       if (torchMissing) {
-        outputChannel.appendLine('提示: 该环境未安装 PyTorch，请先用「AI 环境一键创建」或 pip 安装 torch。');
-        vscode.window.showWarningMessage(`环境 ${envName} 未安装 PyTorch，测试无法执行`);
+        outputChannel.appendLine(vscode.l10n.t('提示: 该环境未安装 PyTorch，请先用「AI 环境一键创建」或 pip 安装 torch。'));
+        vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 未安装 PyTorch，测试无法执行', envName));
         return;
       }
 
       const summary = `PASS ${pass} | WARN ${warn} | FAIL ${fail}`;
       outputChannel.appendLine('');
-      outputChannel.appendLine(`测试汇总: ${summary}`);
+      outputChannel.appendLine(vscode.l10n.t('测试汇总: {0}', summary));
       if (fail > 0) {
-        vscode.window.showWarningMessage(`PyTorch 测试完成 (${envName}): ${summary}`);
+        vscode.window.showWarningMessage(vscode.l10n.t('PyTorch 测试完成 ({0}): {1}', envName, summary));
       } else {
-        vscode.window.showInformationMessage(`PyTorch 测试完成 (${envName}): ${summary}`);
+        vscode.window.showInformationMessage(vscode.l10n.t('PyTorch 测试完成 ({0}): {1}', envName, summary));
       }
     })
   );

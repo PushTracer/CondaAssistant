@@ -13,16 +13,16 @@ export class RemoteService {
 
   async detectAllEnvironments(): Promise<RemoteEnvironment[]> {
     const envs: RemoteEnvironment[] = [];
-    envs.push({ type: 'local', name: '本地', condaPath: '', detail: process.platform });
+    envs.push({ type: 'local', name: vscode.l10n.t('本地'), condaPath: '', detail: process.platform });
     if (this.getRemoteName() === 'wsl') {
-      envs.push({ type: 'wsl', name: 'WSL (当前)', condaPath: '', detail: 'VS Code 运行在 WSL 中' });
+      envs.push({ type: 'wsl', name: vscode.l10n.t('WSL (当前)'), condaPath: '', detail: vscode.l10n.t('VS Code 运行在 WSL 中') });
       return envs;
     }
     if (getConfig().enableWSLSupport) {
       const wslEnvs = await this.detectWSL();
       envs.push(...wslEnvs);
       if (wslEnvs.length > 0) {
-        this.logger.log(`检测到 ${wslEnvs.length} 个 WSL 环境`);
+        this.logger.log(vscode.l10n.t('检测到 {0} 个 WSL 环境', String(wslEnvs.length)));
       }
     }
     return envs;
@@ -47,12 +47,12 @@ export class RemoteService {
             type: 'wsl',
             name: `WSL: ${distro}`,
             condaPath: condaCheck.trim(),
-            detail: `发行版: ${distro}`
+            detail: vscode.l10n.t('发行版: {0}', distro)
           });
         }
       }
     } catch (err) {
-      this.logger.error('WSL 检测失败', err);
+      this.logger.error(vscode.l10n.t('WSL 检测失败'), err);
     }
     return envs;
   }
@@ -68,7 +68,7 @@ export class RemoteService {
       );
       return parseCondaEnvList(output);
     } catch (err) {
-      this.logger.error(`读取 WSL 环境失败 (${distro})`, err);
+      this.logger.error(vscode.l10n.t('读取 WSL 环境失败 ({0})', distro), err);
       return [];
     }
   }

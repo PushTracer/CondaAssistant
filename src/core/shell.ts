@@ -1,6 +1,7 @@
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { getCondaPath, getEnvPath, getEnvPipPath, isWindows } from './platform';
 
 export interface SpawnCallbacks {
@@ -66,7 +67,7 @@ export function execConda(args: string[], timeout = 60000): Promise<string> {
 export function spawnProcess(file: string, args: string[], callbacks: SpawnCallbacks): Promise<number> {
   const resolved = resolveExecutable(file, args);
   const timeout = callbacks.timeout ?? 300000;
-  const timeoutMessage = callbacks.timeoutMessage ?? '安装超时';
+  const timeoutMessage = callbacks.timeoutMessage ?? vscode.l10n.t('安装超时');
   return new Promise((resolve, reject) => {
     const child = child_process.spawn(resolved.command, resolved.args, {
       env: callbacks.env ? { ...callbacks.env } : { ...process.env },
@@ -85,7 +86,7 @@ export function spawnProcess(file: string, args: string[], callbacks: SpawnCallb
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        const err = new Error(`进程退出码: ${code}`);
+        const err = new Error(vscode.l10n.t('进程退出码: {0}', String(code ?? '')));
         callbacks.onError?.(err);
         reject(err);
         return;
@@ -101,7 +102,12 @@ export function spawnConda(
   onError?: (err: Error) => void,
   timeout = 300000
 ): Promise<number> {
-  return spawnProcess(getCondaPath(), args, { onLine, onError, timeout, timeoutMessage: '安装超时' });
+  return spawnProcess(getCondaPath(), args, {
+    onLine,
+    onError,
+    timeout,
+    timeoutMessage: vscode.l10n.t('安装超时'),
+  });
 }
 
 export function spawnPipInEnv(
@@ -134,7 +140,7 @@ export function spawnPipInEnv(
     onLine,
     onError,
     timeout,
-    timeoutMessage: 'pip 安装超时',
+    timeoutMessage: vscode.l10n.t('pip 安装超时'),
     env,
   });
 }

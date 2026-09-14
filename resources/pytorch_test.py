@@ -9,12 +9,145 @@ import torch.optim as optim
 
 
 # ============================================================
-# PyTorch 全面功能测试
+# PyTorch 全面功能测试 / PyTorch full functional test
 # ============================================================
 
 PASS = 0
 FAIL = 0
 WARN = 0
+
+LANG = "zh"
+if "--lang" in sys.argv:
+    index = sys.argv.index("--lang")
+    if index + 1 < len(sys.argv):
+        LANG = sys.argv[index + 1].lower()
+if LANG not in ("zh", "en"):
+    LANG = "zh"
+
+MESSAGES = {
+    "zh": {
+        "title": "PyTorch 环境测试",
+        "label_python": "Python",
+        "label_pytorch": "PyTorch",
+        "label_platform": "Python平台",
+        "label_cuda_build": "CUDA编译版本",
+        "label_cuda_available": "CUDA可用",
+        "label_gpu_count": "GPU数量",
+        "gpu_header": "GPU {0}",
+        "gpu_name": "  名称       : {0}",
+        "gpu_compute_cap": "  Compute Cap: {0}",
+        "gpu_memory": "  总显存     : {0:.2f} GB",
+        "error_prefix": "  错误: {0}: {1}",
+        "skip_cuda": "  CUDA 不可用，跳过 GPU 测试",
+        "bf16_unsupported": "  当前 GPU / CUDA 不支持 BF16",
+        "compile_unsupported": "  当前 PyTorch 不支持 torch.compile",
+        "compile_failed": "  torch.compile 执行失败: {0}",
+        "training_initial_loss": "  初始 Loss: {0:.6f}",
+        "training_final_loss": "  最终 Loss: {0:.6f}",
+        "gpu_stress_start": "  执行 GPU 矩阵计算...",
+        "gpu_stress_done": "  10次 4096×4096 矩阵乘法: {0:.3f} 秒",
+        "correctness_error": "  CPU/GPU 最大误差: {0:.10f}",
+        "cudnn_available": "  cuDNN 可用: {0}",
+        "cudnn_version": "  cuDNN 版本: {0}",
+        "start": "开始测试",
+        "done": "测试完成",
+        "final_state": "CUDA 最终状态:",
+        "final_gpu": "  GPU: {0}",
+        "final_cuda": "  CUDA: {0}",
+        "final_allocated": "  显存已分配: {0:.2f} MB",
+        "final_reserved": "  显存缓存:   {0:.2f} MB",
+        "conclusion_pass": "结论：PyTorch 核心功能全部通过。",
+        "conclusion_warn": "存在部分 WARN，通常是功能不支持或可选功能未启用。",
+        "conclusion_fail": "结论：存在功能测试失败，请查看上面的 [FAIL] 项。",
+        "test_cpu_tensor": "CPU Tensor",
+        "test_tensor_operations": "Tensor 基础操作",
+        "test_cuda_tensor": "CUDA Tensor",
+        "test_cpu_gpu_transfer": "CPU ↔ GPU 数据传输",
+        "test_autograd": "Autograd 自动求导",
+        "test_cuda_autograd": "CUDA Autograd",
+        "test_neural_network": "神经网络",
+        "test_cuda_neural_network": "GPU 神经网络",
+        "test_loss": "Loss Function",
+        "test_optimizer": "Optimizer",
+        "test_training": "完整训练循环",
+        "test_dataloader": "DataLoader",
+        "test_gpu_dataloader": "GPU DataLoader",
+        "test_amp": "AMP / FP16",
+        "test_bfloat16": "BF16",
+        "test_cuda_memory": "CUDA 显存分配",
+        "test_cuda_correctness": "CPU/GPU 计算正确性",
+        "test_gpu_stress": "GPU 压力测试",
+        "test_cuda_operators": "CUDA 算子",
+        "test_model_save_load": "模型保存/加载",
+        "test_torch_compile": "torch.compile",
+        "test_cudnn": "cuDNN",
+        "test_cnn": "CNN",
+    },
+    "en": {
+        "title": "PyTorch Environment Test",
+        "label_python": "Python",
+        "label_pytorch": "PyTorch",
+        "label_platform": "Platform",
+        "label_cuda_build": "CUDA build",
+        "label_cuda_available": "CUDA available",
+        "label_gpu_count": "GPU count",
+        "gpu_header": "GPU {0}",
+        "gpu_name": "  Name       : {0}",
+        "gpu_compute_cap": "  Compute Cap: {0}",
+        "gpu_memory": "  Total VRAM : {0:.2f} GB",
+        "error_prefix": "  Error: {0}: {1}",
+        "skip_cuda": "  CUDA unavailable, skipping GPU test",
+        "bf16_unsupported": "  Current GPU / CUDA does not support BF16",
+        "compile_unsupported": "  Current PyTorch does not support torch.compile",
+        "compile_failed": "  torch.compile failed: {0}",
+        "training_initial_loss": "  Initial loss: {0:.6f}",
+        "training_final_loss": "  Final loss:   {0:.6f}",
+        "gpu_stress_start": "  Running GPU matrix computation...",
+        "gpu_stress_done": "  10x 4096x4096 matmul: {0:.3f} s",
+        "correctness_error": "  Max CPU/GPU error: {0:.10f}",
+        "cudnn_available": "  cuDNN available: {0}",
+        "cudnn_version": "  cuDNN version: {0}",
+        "start": "Starting tests",
+        "done": "Tests finished",
+        "final_state": "CUDA final state:",
+        "final_gpu": "  GPU: {0}",
+        "final_cuda": "  CUDA: {0}",
+        "final_allocated": "  Memory allocated: {0:.2f} MB",
+        "final_reserved": "  Memory reserved:  {0:.2f} MB",
+        "conclusion_pass": "Conclusion: all core PyTorch features passed.",
+        "conclusion_warn": "Some WARNs remain; usually optional features are unsupported or disabled.",
+        "conclusion_fail": "Conclusion: some tests failed; see [FAIL] items above.",
+        "test_cpu_tensor": "CPU Tensor",
+        "test_tensor_operations": "Tensor basics",
+        "test_cuda_tensor": "CUDA Tensor",
+        "test_cpu_gpu_transfer": "CPU ↔ GPU transfer",
+        "test_autograd": "Autograd",
+        "test_cuda_autograd": "CUDA Autograd",
+        "test_neural_network": "Neural network",
+        "test_cuda_neural_network": "GPU neural network",
+        "test_loss": "Loss Function",
+        "test_optimizer": "Optimizer",
+        "test_training": "Full training loop",
+        "test_dataloader": "DataLoader",
+        "test_gpu_dataloader": "GPU DataLoader",
+        "test_amp": "AMP / FP16",
+        "test_bfloat16": "BF16",
+        "test_cuda_memory": "CUDA memory allocation",
+        "test_cuda_correctness": "CPU/GPU correctness",
+        "test_gpu_stress": "GPU stress test",
+        "test_cuda_operators": "CUDA operators",
+        "test_model_save_load": "Model save/load",
+        "test_torch_compile": "torch.compile",
+        "test_cudnn": "cuDNN",
+        "test_cnn": "CNN",
+    },
+}
+
+
+def t(key, *args):
+    catalog = MESSAGES.get(LANG, MESSAGES["zh"])
+    template = catalog.get(key) or MESSAGES["zh"].get(key, key)
+    return template.format(*args) if args else template
 
 
 def test(name, func):
@@ -36,7 +169,7 @@ def test(name, func):
 
     except Exception as e:
         print(f"  [FAIL] {name}")
-        print(f"  错误: {type(e).__name__}: {e}")
+        print(t("error_prefix", type(e).__name__, e))
         FAIL += 1
 
 
@@ -45,27 +178,28 @@ def separator():
 
 
 # ============================================================
-# 基础信息
+# 基础信息 / Basic information
 # ============================================================
 
 def show_info():
     separator()
-    print("PyTorch 环境测试")
+    print(t("title"))
     separator()
 
-    print(f"Python       : {sys.version.split()[0]}")
-    print(f"PyTorch      : {torch.__version__}")
-    print(f"Python平台   : {platform.platform()}")
-    print(f"CUDA编译版本 : {torch.version.cuda}")
-    print(f"CUDA可用     : {torch.cuda.is_available()}")
-    print(f"GPU数量      : {torch.cuda.device_count()}")
+    print(f"{t('label_python')}       : {sys.version.split()[0]}")
+    print(f"{t('label_pytorch')}      : {torch.__version__}")
+    print(f"{t('label_platform')}   : {platform.platform()}")
+    print(f"{t('label_cuda_build')} : {torch.version.cuda}")
+    print(f"{t('label_cuda_available')}     : {torch.cuda.is_available()}")
+    print(f"{t('label_gpu_count')}      : {torch.cuda.device_count()}")
 
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
-            print(f"\nGPU {i}")
-            print(f"  名称       : {torch.cuda.get_device_name(i)}")
-            print(f"  Compute Cap: {torch.cuda.get_device_capability(i)}")
-            print(f"  总显存     : {torch.cuda.get_device_properties(i).total_memory / 1024**3:.2f} GB")
+            print()
+            print(t("gpu_header", i))
+            print(t("gpu_name", torch.cuda.get_device_name(i)))
+            print(t("gpu_compute_cap", torch.cuda.get_device_capability(i)))
+            print(t("gpu_memory", torch.cuda.get_device_properties(i).total_memory / 1024**3))
 
     separator()
 
@@ -87,7 +221,7 @@ def test_cpu_tensor():
 
 
 # ============================================================
-# 2. Tensor 基础操作
+# 2. Tensor 基础操作 / Tensor basics
 # ============================================================
 
 def test_tensor_operations():
@@ -113,7 +247,7 @@ def test_tensor_operations():
 
 def test_cuda_tensor():
     if not torch.cuda.is_available():
-        print("  CUDA 不可用，跳过 GPU 测试")
+        print(t("skip_cuda"))
         return "WARN"
 
     device = torch.device("cuda")
@@ -133,7 +267,7 @@ def test_cuda_tensor():
 
 
 # ============================================================
-# 4. CPU ↔ GPU 数据传输
+# 4. CPU ↔ GPU 数据传输 / CPU ↔ GPU transfer
 # ============================================================
 
 def test_cpu_gpu_transfer():
@@ -303,7 +437,7 @@ def test_optimizer():
 
 
 # ============================================================
-# 11. 完整训练循环
+# 11. 完整训练循环 / Full training loop
 # ============================================================
 
 def test_training():
@@ -337,8 +471,8 @@ def test_training():
         losses.append(loss.item())
 
     if not losses[-1] < losses[0]:
-        print(f"  初始 Loss: {losses[0]:.6f}")
-        print(f"  最终 Loss: {losses[-1]:.6f}")
+        print(t("training_initial_loss", losses[0]))
+        print(t("training_final_loss", losses[-1]))
         return "WARN"
 
     return True
@@ -450,7 +584,7 @@ def test_bfloat16():
     device = torch.device("cuda")
 
     if not torch.cuda.is_bf16_supported():
-        print("  当前 GPU / CUDA 不支持 BF16")
+        print(t("bf16_unsupported"))
         return "WARN"
 
     x = torch.randn(
@@ -471,7 +605,7 @@ def test_bfloat16():
 
 
 # ============================================================
-# 16. CUDA 内存分配
+# 16. CUDA 内存分配 / CUDA memory allocation
 # ============================================================
 
 def test_cuda_memory():
@@ -502,7 +636,7 @@ def test_cuda_memory():
 
 
 # ============================================================
-# 17. CUDA 同步计算正确性
+# 17. CUDA 同步计算正确性 / CPU-GPU correctness
 # ============================================================
 
 def test_cuda_correctness():
@@ -527,7 +661,7 @@ def test_cuda_correctness():
         torch.abs(cpu_result - gpu_result)
     ).item()
 
-    print(f"  CPU/GPU 最大误差: {max_error:.10f}")
+    print(t("correctness_error", max_error))
 
     assert max_error < 1e-4
 
@@ -535,7 +669,7 @@ def test_cuda_correctness():
 
 
 # ============================================================
-# 18. 大规模 GPU 压力测试
+# 18. 大规模 GPU 压力测试 / GPU stress test
 # ============================================================
 
 def test_gpu_stress():
@@ -544,7 +678,7 @@ def test_gpu_stress():
 
     device = torch.device("cuda")
 
-    print("  执行 GPU 矩阵计算...")
+    print(t("gpu_stress_start"))
 
     a = torch.randn(4096, 4096, device=device)
     b = torch.randn(4096, 4096, device=device)
@@ -560,7 +694,7 @@ def test_gpu_stress():
 
     elapsed = time.perf_counter() - start
 
-    print(f"  10次 4096×4096 矩阵乘法: {elapsed:.3f} 秒")
+    print(t("gpu_stress_done", elapsed))
 
     assert torch.isfinite(c).all()
 
@@ -571,7 +705,7 @@ def test_gpu_stress():
 
 
 # ============================================================
-# 19. CUDA 算子测试
+# 19. CUDA 算子测试 / CUDA operators
 # ============================================================
 
 def test_cuda_operators():
@@ -594,7 +728,7 @@ def test_cuda_operators():
 
 
 # ============================================================
-# 20. 模型保存 / 加载
+# 20. 模型保存 / 加载 / Model save & load
 # ============================================================
 
 def test_model_save_load():
@@ -646,7 +780,7 @@ def test_model_save_load():
 
 def test_torch_compile():
     if not hasattr(torch, "compile"):
-        print("  当前 PyTorch 不支持 torch.compile")
+        print(t("compile_unsupported"))
         return "WARN"
 
     model = nn.Sequential(
@@ -668,7 +802,7 @@ def test_torch_compile():
         return True
 
     except Exception as e:
-        print(f"  torch.compile 执行失败: {e}")
+        print(t("compile_failed", e))
         return "WARN"
 
 
@@ -680,8 +814,8 @@ def test_cudnn():
     if not torch.cuda.is_available():
         return "WARN"
 
-    print(f"  cuDNN 可用: {torch.backends.cudnn.is_available()}")
-    print(f"  cuDNN 版本: {torch.backends.cudnn.version()}")
+    print(t("cudnn_available", torch.backends.cudnn.is_available()))
+    print(t("cudnn_version", torch.backends.cudnn.version()))
 
     assert torch.backends.cudnn.is_available()
 
@@ -729,47 +863,47 @@ def test_cnn():
 
 
 # ============================================================
-# 主程序
+# 主程序 / Main
 # ============================================================
 
 def main():
     show_info()
 
     tests = [
-        ("CPU Tensor", test_cpu_tensor),
-        ("Tensor 基础操作", test_tensor_operations),
-        ("CUDA Tensor", test_cuda_tensor),
-        ("CPU ↔ GPU 数据传输", test_cpu_gpu_transfer),
-        ("Autograd 自动求导", test_autograd),
-        ("CUDA Autograd", test_cuda_autograd),
-        ("神经网络", test_neural_network),
-        ("GPU 神经网络", test_cuda_neural_network),
-        ("Loss Function", test_loss),
-        ("Optimizer", test_optimizer),
-        ("完整训练循环", test_training),
-        ("DataLoader", test_dataloader),
-        ("GPU DataLoader", test_gpu_dataloader),
-        ("AMP / FP16", test_amp),
-        ("BF16", test_bfloat16),
-        ("CUDA 显存分配", test_cuda_memory),
-        ("CPU/GPU 计算正确性", test_cuda_correctness),
-        ("GPU 压力测试", test_gpu_stress),
-        ("CUDA 算子", test_cuda_operators),
-        ("模型保存/加载", test_model_save_load),
-        ("torch.compile", test_torch_compile),
-        ("cuDNN", test_cudnn),
-        ("CNN", test_cnn),
+        (t("test_cpu_tensor"), test_cpu_tensor),
+        (t("test_tensor_operations"), test_tensor_operations),
+        (t("test_cuda_tensor"), test_cuda_tensor),
+        (t("test_cpu_gpu_transfer"), test_cpu_gpu_transfer),
+        (t("test_autograd"), test_autograd),
+        (t("test_cuda_autograd"), test_cuda_autograd),
+        (t("test_neural_network"), test_neural_network),
+        (t("test_cuda_neural_network"), test_cuda_neural_network),
+        (t("test_loss"), test_loss),
+        (t("test_optimizer"), test_optimizer),
+        (t("test_training"), test_training),
+        (t("test_dataloader"), test_dataloader),
+        (t("test_gpu_dataloader"), test_gpu_dataloader),
+        (t("test_amp"), test_amp),
+        (t("test_bfloat16"), test_bfloat16),
+        (t("test_cuda_memory"), test_cuda_memory),
+        (t("test_cuda_correctness"), test_cuda_correctness),
+        (t("test_gpu_stress"), test_gpu_stress),
+        (t("test_cuda_operators"), test_cuda_operators),
+        (t("test_model_save_load"), test_model_save_load),
+        (t("test_torch_compile"), test_torch_compile),
+        (t("test_cudnn"), test_cudnn),
+        (t("test_cnn"), test_cnn),
     ]
 
     separator()
-    print("开始测试")
+    print(t("start"))
     separator()
 
     for name, func in tests:
         test(name, func)
 
     separator()
-    print("测试完成")
+    print(t("done"))
     separator()
 
     print(f"PASS : {PASS}")
@@ -777,20 +911,21 @@ def main():
     print(f"FAIL : {FAIL}")
 
     if torch.cuda.is_available():
-        print("\nCUDA 最终状态:")
-        print(f"  GPU: {torch.cuda.get_device_name(0)}")
-        print(f"  CUDA: {torch.version.cuda}")
-        print(f"  显存已分配: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-        print(f"  显存缓存:   {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
+        print()
+        print(t("final_state"))
+        print(t("final_gpu", torch.cuda.get_device_name(0)))
+        print(t("final_cuda", torch.version.cuda))
+        print(t("final_allocated", torch.cuda.memory_allocated() / 1024**2))
+        print(t("final_reserved", torch.cuda.memory_reserved() / 1024**2))
 
     separator()
 
     if FAIL == 0:
-        print("结论：PyTorch 核心功能全部通过。")
+        print(t("conclusion_pass"))
         if WARN > 0:
-            print("存在部分 WARN，通常是功能不支持或可选功能未启用。")
+            print(t("conclusion_warn"))
     else:
-        print("结论：存在功能测试失败，请查看上面的 [FAIL] 项。")
+        print(t("conclusion_fail"))
 
     separator()
 
