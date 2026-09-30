@@ -8,7 +8,7 @@
 |------|------|
 | 名称 | `conda-assistant` (Conda Manager) |
 | 类型 | VS Code 扩展（TypeScript） |
-| 版本 | 0.3.1 |
+| 版本 | 0.3.2 |
 | 发布者 | pushtracer |
 | 描述 | 智能 Conda 环境助手（面向 AI/深度学习场景） |
 | 仓库 | https://github.com/PushTracer/CondaAssistant |

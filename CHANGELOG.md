@@ -2,6 +2,14 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格。
 
+## [0.3.2] - 2026-09-30
+
+### 图标
+
+- 市场图标重做为深色渐变底 + 绿色「C」环 + 居中白色 AI 星芒：矢量母版 `resources/icon.svg`，位图 `icon.png`（128×128）与 `icon-256.png`（256×256）。
+- 新增符合 VS Code 规范的 24×24 单色活动栏图标 `resources/activitybar.svg`，`viewsContainers.activitybar[].icon` 由 `icon.png` 改指向它。
+- 新增 `scripts/make-icon.ps1`：按 `resources/icon.svg` 的同一套几何重新生成各尺寸 PNG（`-Sizes 128,256,512` 可扩展）。
+
 ## [0.3.1] - 2026-09-30
 
 ### 重构
@@ -27,8 +35,6 @@
 - 移除死代码：`RemoteService.execInWSL`、`RemoteService.isRemote()`、未使用的 `PackageInfo` 类型。
 - 新增 GitHub Actions CI（`.github/workflows/ci.yml`），执行 `lint` + `l10n:check` + 扩展测试。
 - 精简 `.vscodeignore`：发布包不再包含 TypeScript 源码、source map、测试与构建脚本，文件数由 132 缩减到 45。
-- 重做图标：市场图标改为深色底 + 绿色「C」 + AI 星芒（`resources/icon.svg`、`icon.png` 128×128、`icon-256.png` 256×256）；新增符合 VS Code 规范的 24×24 单色活动栏图标 `resources/activitybar.svg`，`viewsContainers` 改指向它。
-- 新增 `scripts/make-icon.ps1`：按 `resources/icon.svg` 的同一套几何重新生成各尺寸 PNG（`-Sizes 128,256,512` 可扩展）。
 
 ### 文档与测试
 

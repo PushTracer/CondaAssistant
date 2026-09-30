@@ -20,7 +20,7 @@ An AI-oriented Conda environment manager for VS Code: manage environments from t
 需要 VS Code 1.85.0 及以上，以及 Miniconda / Anaconda / Miniforge / Mambaforge 之一。
 
 ```bash
-code --install-extension conda-assistant-0.3.1.vsix
+code --install-extension conda-assistant-0.3.2.vsix
 ```
 
 也可在扩展面板右上角 `...` → **Install from VSIX...** 选择 `.vsix` 文件。
