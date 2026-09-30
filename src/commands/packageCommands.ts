@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandContext } from './context';
-import { getEnvName, requireLocalEnv, refreshEnvironments } from './helpers';
+import { getEnvName, pickEnvironment, requireLocalEnv, refreshEnvironments } from './helpers';
 
 export function registerPackageCommands(ctx: CommandContext): void {
   const { context, conda, envTree } = ctx;
@@ -10,16 +10,11 @@ export function registerPackageCommands(ctx: CommandContext): void {
       const envName = getEnvName(item);
       if (envName && !requireLocalEnv(envName)) return;
       if (!envName) {
-        const info = await conda.getCondaInfo();
-        if (!info) return;
-        const pick = await vscode.window.showQuickPick(
-          info.envs.map(env => ({ label: env.name, description: env.pythonVersion })),
-          { placeHolder: vscode.l10n.t('选择环境') }
-        );
-        if (!pick) return;
+        const picked = await pickEnvironment(conda, vscode.l10n.t('选择环境'));
+        if (!picked) return;
         const pkgName = await vscode.window.showInputBox({ prompt: vscode.l10n.t('输入包名') });
         if (!pkgName) return;
-        await conda.installPackage(pick.label, pkgName);
+        await conda.installPackage(picked, pkgName);
       } else {
         const pkgName = await vscode.window.showInputBox({ prompt: vscode.l10n.t('安装包到 {0}', envName) });
         if (!pkgName) return;
@@ -37,13 +32,7 @@ export function registerPackageCommands(ctx: CommandContext): void {
           if (!requireLocalEnv(name)) return undefined;
           return name;
         }
-        const info = await conda.getCondaInfo();
-        if (!info) return undefined;
-        const pick = await vscode.window.showQuickPick(
-          info.envs.map(env => ({ label: env.name, description: env.pythonVersion })),
-          { placeHolder: vscode.l10n.t('选择环境') }
-        );
-        return pick?.label;
+        return await pickEnvironment(conda, vscode.l10n.t('选择环境'));
       };
       const envName = await resolveEnv();
       if (!envName) return;

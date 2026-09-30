@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { Logger } from '../core/logger';
-import { spawnProcess } from '../core/shell';
+import { spawnProcess } from '../core/process';
 import { getEnvPythonPath } from '../core/platform';
 
 const DEFAULT_TEST_TIMEOUT = 30 * 60 * 1000;

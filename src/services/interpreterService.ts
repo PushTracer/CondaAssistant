@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Logger } from '../core/logger';
-import { execConda, execFileChecked } from '../core/shell';
+import { execConda } from '../core/shell';
+import { execFileChecked } from '../core/process';
 import { getEnvPythonPath, isWindows } from '../core/platform';
 import { PythonInterpreter } from '../models/types';
 

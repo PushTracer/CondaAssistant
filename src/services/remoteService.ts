@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Logger } from '../core/logger';
-import { execFileText } from '../core/shell';
+import { execFileText } from '../core/process';
 import { getConfig } from '../core/config';
 import { parseCondaEnvList } from '../util/parse';
 import { CondaEnvironment, RemoteEnvironment } from '../models/types';
@@ -35,7 +35,14 @@ export class RemoteService {
       const distros = output
         .split('\n')
         .map(line => line.replace(/[\r\n\x00\uFEFF]/g, '').trim())
-        .filter(line => line && DISTRO_NAME_PATTERN.test(line) && !line.includes('Windows') && !line.includes('docker-desktop'));
+        .filter(line =>
+          line
+          && DISTRO_NAME_PATTERN.test(line)
+          && !line.includes('Windows')
+          && !line.includes('docker-desktop')
+          // guard against error leftovers ("spawn wsl.exe ENOENT", "not installed", ...)
+          && !/(spawn |ENOENT|not installed|no installed|not recognized|未安装|不是内部|无法找到|not found)/i.test(line)
+        );
       for (const distro of distros) {
         const condaCheck = await execFileText(
           WSL_EXE,
@@ -71,17 +78,6 @@ export class RemoteService {
       this.logger.error(vscode.l10n.t('读取 WSL 环境失败 ({0})', distro), err);
       return [];
     }
-  }
-
-  async execInWSL(wslName: string, condaArgs: string[]): Promise<string> {
-    const distro = this.normalizeDistroName(wslName);
-    if (!distro) return '';
-    const script = `conda ${condaArgs.join(' ')} 2>/dev/null`;
-    return await execFileText(WSL_EXE, ['-d', distro, 'bash', '-lc', script], 60000);
-  }
-
-  isRemote(): boolean {
-    return vscode.env.remoteName !== undefined && vscode.env.remoteName !== null;
   }
 
   getRemoteName(): string {

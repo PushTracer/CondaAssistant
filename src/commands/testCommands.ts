@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { CommandContext } from './context';
-import { getEnvName, requireLocalEnv } from './helpers';
+import { getEnvName, pickEnvironment, requireLocalEnv } from './helpers';
 
 export function registerTestCommands(ctx: CommandContext): void {
   const { context, conda, pytorchTest } = ctx;
@@ -10,27 +10,23 @@ export function registerTestCommands(ctx: CommandContext): void {
     vscode.commands.registerCommand('conda-assistant.pytorchTest', async (item: unknown) => {
       let envName = getEnvName(item);
       if (!envName) {
-        const info = await conda.getCondaInfo();
-        if (!info) return;
-        const pick = await vscode.window.showQuickPick(
-          info.envs.map(env => ({ label: env.name, description: env.pythonVersion || '' })),
-          { placeHolder: vscode.l10n.t('选择要测试的 Conda 环境') }
-        );
-        if (!pick) return;
-        envName = pick.label;
+        envName = await pickEnvironment(conda, vscode.l10n.t('选择要测试的 Conda 环境'));
+        if (!envName) return;
       }
-      if (!requireLocalEnv(envName)) return;
-      if (pytorchTest.isRunning(envName)) {
-        vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 的 PyTorch 测试正在进行中', envName));
+      if (!envName) return;
+      const targetEnv = envName;
+      if (!requireLocalEnv(targetEnv)) return;
+      if (pytorchTest.isRunning(targetEnv)) {
+        vscode.window.showWarningMessage(vscode.l10n.t('环境 {0} 的 PyTorch 测试正在进行中', targetEnv));
         return;
       }
 
       const scriptPath = context.asAbsolutePath(path.join('resources', 'pytorch_test.py'));
       const language: 'zh' | 'en' = vscode.env.language.toLowerCase().startsWith('en') ? 'en' : 'zh';
-      const outputChannel = vscode.window.createOutputChannel(vscode.l10n.t('PyTorch 测试 {0}', envName));
+      const outputChannel = vscode.window.createOutputChannel(vscode.l10n.t('PyTorch 测试 {0}', targetEnv));
       context.subscriptions.push(outputChannel);
       outputChannel.show(true);
-      outputChannel.appendLine(vscode.l10n.t('PyTorch 功能测试: {0}', envName));
+      outputChannel.appendLine(vscode.l10n.t('PyTorch 功能测试: {0}', targetEnv));
       outputChannel.appendLine(vscode.l10n.t('脚本: {0}', scriptPath));
       outputChannel.appendLine('');
 
@@ -40,10 +36,10 @@ export function registerTestCommands(ctx: CommandContext): void {
       let torchMissing = false;
 
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('PyTorch 测试 {0}', envName) },
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('PyTorch 测试 {0}', targetEnv) },
         async (progress) => {
           try {
-            await pytorchTest.run(envName, scriptPath, language, (line) => {
+            await pytorchTest.run(targetEnv, scriptPath, language, (line) => {
               outputChannel.appendLine(line);
               const currentTest = line.match(/^\[TEST\]\s*(.+)$/);
               if (currentTest) progress.report({ message: vscode.l10n.t('正在测试: {0}', currentTest[1]) });

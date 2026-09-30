@@ -1,22 +1,25 @@
 # CondaAssistant 项目报告
 
+> 本报告描述重构后的代码状态。上一版报告（0.1.0，单文件 `commands.ts` / `condaManager.ts` / `utils.ts`）已过期。
+
 ## 一、项目概览
 
 | 项目 | 内容 |
 |------|------|
-| 名称 | `conda-assistant` (CondaAssistant) |
+| 名称 | `conda-assistant` (Conda Manager) |
 | 类型 | VS Code 扩展（TypeScript） |
-| 版本 | 0.1.0 |
+| 版本 | 0.3.1 |
 | 发布者 | pushtracer |
 | 描述 | 智能 Conda 环境助手（面向 AI/深度学习场景） |
 | 仓库 | https://github.com/PushTracer/CondaAssistant |
 | 引擎 | VS Code ^1.85.0 |
 | 构建 | `tsc` → `out/`，打包 `vsce package` |
-| 编译状态 | 通过（`npm run compile` 退出码 0） |
+| 编译状态 | 通过（`tsc --noEmit` 退出码 0） |
+| 测试状态 | 通过（17 个用例，`node out/test/runTest.js`） |
 
 ## 二、功能定位
 
-一个把 **Conda 环境管理** 与 **AI 环境一键搭建/体检** 结合的 VS Code 侧边栏扩展，主要卖点：
+把 **Conda 环境管理** 与 **AI 环境一键搭建/体检** 结合的 VS Code 侧边栏扩展：
 
 - AI 框架模板一键建环境（PyTorch/TensorFlow/CV/NLP/数据科学/XGBoost）
 - 动态抓取 PyTorch 官网可用 CUDA 版本，自动匹配 `cu1xx` 轮子
@@ -28,52 +31,63 @@
 
 ```
 src/
-├── extension.ts          93   激活入口、启动自检、WSL 环境聚合
-├── commands.ts          630   20 个命令注册（核心编排层，最大文件）
-├── condaManager.ts      397   conda 命令封装、环境增删改查/导出导入
-├── utils.ts             352   路径探测、进程执行、磁盘检查、输出流解析
-├── aiRecommendation.ts  183   AI 环境模板 + PyTorch 官网 CUDA 探测
-├── healthChecker.ts     166   健康检查与评分
-├── interpreterManager.ts155   VS Code Python 解释器切换
-├── treeView.ts          114   两棵 TreeView（环境列表 / 快速操作）
-├── backupManager.ts     105   yml/txt/conda-pack 三种备份
-└── remoteAdapter.ts      80   WSL 检测与命令桥接
-test/
-├── extension.test.ts     36   激活/命令注册/视图注册（3 个用例）
-├── runTest.ts            17
-└── index.ts             21
+├── extension.ts              116  激活入口、启动自检、WSL 环境聚合
+├── models/types.ts            75  共享类型
+├── core/
+│   ├── process.ts            310  通用进程原语：spawn/超时/进程树终止/行流解析
+│   ├── shell.ts               57  conda/pip 专用封装：execConda / spawnConda / spawnPipInEnv
+│   ├── platform.ts           268  路径探测、磁盘/inode 检查、pip 工作目录、shell 转义
+│   ├── config.ts              32  设置读取与默认值
+│   └── logger.ts              21  输出通道日志
+├── util/
+│   ├── format.ts              34  formatBytes / parseByteAmount / formatDuration
+│   └── parse.ts               25  conda env list 输出解析
+├── services/
+│   ├── condaService.ts       352  conda 命令封装、环境增删改查/导出导入/包分析
+│   ├── healthService.ts      184  健康检查与评分
+│   ├── interpreterService.ts 287  VS Code Python 解释器切换
+│   ├── remoteService.ts      100  WSL 检测与命令桥接
+│   ├── diskService.ts         86  磁盘诊断与缓存清理
+│   └── pytorchTestService.ts  43  PyTorch 功能测试调度
+├── ai/
+│   ├── templates.ts           85  AI 环境模板
+│   ├── pytorchIndex.ts       169  PyTorch 官网 CUDA 变体抓取
+│   ├── pipProgress.ts        178  conda/pip 下载输出解析与进度节流
+│   └── quickCreate.ts        242  环境一键创建向导
+├── views/
+│   ├── environmentsTree.ts    74  环境树
+│   ├── quickActionsTree.ts    30  快速操作树
+│   └── healthPanel.ts         47  健康检查 Webview
+└── commands/                  ~490 按领域拆分的命令注册
+    ├── index.ts / context.ts / helpers.ts
+    ├── environmentCommands.ts / packageCommands.ts / aiCommands.ts
+    ├── testCommands.ts / interpreterCommands.ts / maintenanceCommands.ts
+test/                          264  集成 + 本地化 + 单元测试（17 用例）
 ```
 
-源码约 **2212 行**，测试约 **74 行**。
+源码约 **3355 行**，测试约 **264 行**。
 
 ## 四、架构评价
 
 ### 优点
 
-- 分层清晰：`utils`(基础) → `*Manager`(领域) → `commands`(编排) → `extension`(装配)。
-- `commands.ts` 使用 `withProgress` + 流式输出，长任务可取消、进度可读。
-- 安全意识到位：删除/覆盖有 modal 确认，WSL 环境操作有 `requireLocalEnv` 拦截。
-- 安装前做磁盘/inode 预检并可一键清缓存（`checkInstallSpace`），贴合 AI 环境大体积的实际痛点。
-- CUDA 变体联网动态获取并带静态兜底，兼容性考虑较好。
+- 分层清晰：`core`(基础设施) → `services`/`ai`(领域) → `commands`(编排) → `extension`(装配)。
+- 命令按领域拆分，`commands/index.ts` 只做注册装配；`CommandContext` 统一注入依赖。
+- `core/process.ts` 把进程管理与 conda 语义解耦：超时是**无输出超时**，并可用目录字节增长判定存活，避免静默下载被误杀，且超时必定 settle（不再出现进度条不关闭）。
+- `ai/pipProgress.ts` 把 pip/conda 输出解析与 `withProgress` 上报抽为可单测的纯逻辑。
+- `ai/quickCreate.ts` 将一键创建向导从命令注册中独立，`aiCommands.ts` 变为薄注册层。
+- 环境路径解析统一为 `platform.resolveEnvPathFromInfo`，pip 工作目录统一为 `platform.getPipWorkDirs`，避免多处重复实现。
+- 磁盘/inode 预检（`checkInstallSpace`）贴合 AI 环境大体积痛点；Windows 磁盘查询改用 .NET `DriveInfo`，不再依赖已被移除的 `wmic`。
+- WSL 发行版名有白名单校验，shell 参数经 `quotePosix` 转义。
 
-### 问题与风险
+### 已知问题与后续项
 
-1. **命令与 `package.json` 不一致**：`commands.ts` 注册了 `switchInterpreter`、`detectConflict`、`showPackageDeps`、`scanWSL`、`openWSLTerminal`、`diskDiagnose`、`cleanCache` 等，但 `package.json` 中部分命令未在 `contributes.commands` 声明（如 `showPackageDeps`），且 `activationEvents` 也未列入。命令存在但无法从命令面板发现。
-2. **大量吞异常**：`catch { }` / `catch (err) { }` 遍布（如 `commands.ts:56,417`、`condaManager.ts`），排障困难，建议至少写入 outputChannel。
-3. **`renameEnvironment` 语义风险**：实现为 `clone + delete`（`condaManager.ts:175`），大环境耗时长且删除确认会二次弹窗，非原子操作，中途失败可能留下两个环境。
-4. **测试覆盖极低**：仅 3 个冒烟用例，且 `test/extension.test.ts:6` 的扩展 ID `conda-assistant-manager` 与 `package.json` 的 `conda-assistant` 不匹配，测试必然失败；`应注册 TreeView`（`:32`）用 `as any` 访问不存在的 `window.treeViews`，断言无意义。
-5. **lint 脚本失效**：`npm run lint` 依赖 `tslint`，但 devDependencies 未安装，且项目未使用 ESLint。TSLint 已废弃。
-6. **跨平台缺陷**：`checkInstallSpace`/`diskDiagnose` 硬编码 `/tmp`、`~/.cache/pip`、`df -i`，在 Windows 上会静默失败或输出 `?`。
-7. **安全/健壮性**：`execCommand` 拼接 shell 字符串（`remoteAdapter.ts:75`、`utils.ts`），WSL 发行版名未做转义，存在命令注入面（本地扩展场景风险有限，但应规避）。
-8. **重复实现**：`formatBytes` 在 `utils.ts:257` 与 `backupManager.ts:102` 各写一份；环境路径解析在多个文件重复。
-9. **`package.json` 与实现漂移**：`activationEvents` 已声明 `onCommand`，但 `commands` 列表缺项；配置项 `showInactiveEnvironments` 未在代码中使用。
-10. **无 README / CHANGELOG**：仓库只有 `.vsix` 产物，缺少文档，影响可维护性与发布。
+1. **`renameEnvironment` 依赖 conda 版本**：优先使用 `conda rename`（conda ≥ 4.14），缺失时回退到「克隆 + 删除」，并会在删除旧环境失败时显式告警，避免静默残留两个环境。conda 自身的 rename 在大环境上仍可能耗时较长。
+2. **WSL 只读**：WSL 环境不支持安装/删除等写操作，需在 WSL 终端手动执行。
+3. **测试依赖 VS Code 宿主**：`npm test` 通过 `@vscode/test-electron` 启动扩展宿主，无缓存且无网络时会尝试下载 VS Code。
+
+> 已解决：`platform.ts` 的静默异常改为通过 `setPlatformErrorHandler` 上报到输出通道（`getDirectorySize` 因遍历频繁而刻意保持安静，已注释说明）；`execInWSL` / `isRemote()` / `PackageInfo` 等死代码已移除；已添加 GitHub Actions CI。
 
 ## 五、结论
 
-项目功能丰富、实用性强，架构分层合理，处于可打包发布的阶段，编译健康。主要短板集中在 **测试形同虚设、异常处理过于宽松、命令清单与清单文件不同步、Windows 兼容性** 四方面。建议优先：
-
-1. 修复测试扩展 ID，恢复测试可用性；
-2. 补齐 `package.json` 命令声明，保证命令面板可见；
-3. 清理 `tslint` 或迁移 ESLint；
-4. 为磁盘诊断增加 Windows 分支。
+重构后项目保持功能不变并整体编译、测试通过：命令注册层显著变薄，大文件职责被拆分为可单测模块，重复逻辑收敛到 `core/platform` 与 `ai/*`；平台层异常可观测，重命名改为 conda 原生实现，CI 固化 `lint` + `l10n:check` + `test`。后续建议继续补充 WSL 写操作支持与更多单元测试。

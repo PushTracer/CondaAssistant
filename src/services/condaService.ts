@@ -2,13 +2,17 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Logger } from '../core/logger';
-import { execConda, execFileChecked } from '../core/shell';
+import { getConfig } from '../core/config';
+import { execConda } from '../core/shell';
+import { execFileChecked } from '../core/process';
 import {
   getCondaPath,
   getCondaPrefix,
   getEnvPath,
   getEnvPythonPath,
   getDirectorySize,
+  quotePosix,
+  resolveEnvPathFromInfo,
 } from '../core/platform';
 import { formatBytes } from '../util/format';
 import { parseCondaEnvList } from '../util/parse';
@@ -20,6 +24,11 @@ export interface DeleteEnvironmentOptions {
 
 export class CondaService {
   constructor(private readonly logger: Logger) {}
+
+  /** Long timeout for operations that download/resolve packages. */
+  private installTimeout(): number {
+    return getConfig().condaInstallTimeout || 600000;
+  }
 
   async getCondaInfo(): Promise<CondaInfo | null> {
     try {
@@ -88,7 +97,8 @@ export class CondaService {
       const output = await execConda(['list', '-n', envName, '--json']);
       const packages = JSON.parse(output);
       return Array.isArray(packages) ? packages.length : 0;
-    } catch {
+    } catch (err) {
+      this.logger.error(vscode.l10n.t('读取包列表失败 ({0})', envName), err);
       return 0;
     }
   }
@@ -97,23 +107,9 @@ export class CondaService {
     try {
       const infoOutput = await execConda(['info', '--json']);
       const info = JSON.parse(infoOutput);
-      const rootPrefix = info.root_prefix || '';
-      if (envName === 'base' || envName === rootPrefix) {
-        if (fs.existsSync(rootPrefix)) {
-          return formatBytes(await getDirectorySize(rootPrefix));
-        }
-        return vscode.l10n.t('未知');
-      }
-      const envDirs: string[] = info.envs_dirs || [];
-      for (const dir of envDirs) {
-        const envPath = path.join(dir, envName);
-        if (fs.existsSync(envPath)) {
-          return formatBytes(await getDirectorySize(envPath));
-        }
-      }
-      const fallback = path.join(rootPrefix, 'envs', envName);
-      if (fs.existsSync(fallback)) {
-        return formatBytes(await getDirectorySize(fallback));
+      const envPath = resolveEnvPathFromInfo(info, envName);
+      if (envPath && fs.existsSync(envPath)) {
+        return formatBytes(await getDirectorySize(envPath));
       }
       return vscode.l10n.t('未知');
     } catch (err) {
@@ -126,7 +122,7 @@ export class CondaService {
     try {
       const args = ['create', '-y', '-n', name, `python=${pythonVersion}`, ...packages];
       this.logger.log(vscode.l10n.t('创建环境: conda {0}', args.join(' ')));
-      await execConda(args, 120000);
+      await execConda(args, this.installTimeout());
       this.logger.log(vscode.l10n.t('环境 {0} 创建成功', name));
       return true;
     } catch (err) {
@@ -139,7 +135,7 @@ export class CondaService {
   async deleteEnvironment(name: string, options: DeleteEnvironmentOptions = {}): Promise<boolean> {
     const { promptCacheClean = true } = options;
     try {
-      await execConda(['remove', '-y', '-n', name, '--all']);
+      await execConda(['remove', '-y', '-n', name, '--all'], this.installTimeout());
       this.logger.log(vscode.l10n.t('环境 {0} 已删除', name));
       if (promptCacheClean) {
         const cleanLabel = vscode.l10n.t('清理缓存');
@@ -148,7 +144,7 @@ export class CondaService {
           cleanLabel, vscode.l10n.t('暂不清理')
         );
         if (cleanChoice === cleanLabel) {
-          await execConda(['clean', '-afy'], 120000);
+          await execConda(['clean', '-afy'], this.installTimeout());
           this.logger.log(vscode.l10n.t('Conda 缓存已清理'));
         }
       }
@@ -162,7 +158,7 @@ export class CondaService {
 
   async cloneEnvironment(src: string, dst: string): Promise<boolean> {
     try {
-      await execConda(['create', '-y', '-n', dst, '--clone', src], 180000);
+      await execConda(['create', '-y', '-n', dst, '--clone', src], this.installTimeout());
       this.logger.log(vscode.l10n.t('环境 {0} 已克隆到 {1}', src, dst));
       return true;
     } catch (err) {
@@ -173,16 +169,32 @@ export class CondaService {
   }
 
   async renameEnvironment(oldName: string, newName: string): Promise<boolean> {
-    const cloned = await this.cloneEnvironment(oldName, newName);
-    if (cloned) {
-      return await this.deleteEnvironment(oldName, { promptCacheClean: false });
+    // Prefer conda's own `rename` (available since conda 4.14): one supported
+    // operation instead of the extension doing clone + delete with a second
+    // confirmation prompt. Older conda lacks the subcommand, so fall back.
+    try {
+      await execConda(['rename', '-n', oldName, newName], this.installTimeout());
+      this.logger.log(vscode.l10n.t('环境 {0} 已重命名为 {1}', oldName, newName));
+      return true;
+    } catch (err) {
+      this.logger.error(vscode.l10n.t('重命名环境失败，回退到克隆 + 删除 ({0} -> {1})', oldName, newName), err);
     }
-    return false;
+
+    const cloned = await this.cloneEnvironment(oldName, newName);
+    if (!cloned) return false;
+    const deleted = await this.deleteEnvironment(oldName, { promptCacheClean: false });
+    if (!deleted) {
+      // Do not leave two environments behind without telling the user.
+      vscode.window.showWarningMessage(
+        vscode.l10n.t('已创建新环境 {0}，但删除旧环境 {1} 失败，请手动删除。', newName, oldName)
+      );
+    }
+    return deleted;
   }
 
   async installPackage(envName: string, pkgName: string): Promise<boolean> {
     try {
-      await execConda(['install', '-y', '-n', envName, pkgName], 120000);
+      await execConda(['install', '-y', '-n', envName, pkgName], this.installTimeout());
       this.logger.log(vscode.l10n.t('已安装 {0} 到 {1}', pkgName, envName));
       return true;
     } catch (err) {
@@ -240,21 +252,7 @@ export class CondaService {
     try {
       const info = await execConda(['info', '--json']);
       const condaInfo = JSON.parse(info);
-      const rootPrefix = condaInfo.root_prefix || '';
-      let envPath = '';
-      if (envName === 'base') {
-        envPath = rootPrefix;
-      } else {
-        const envsDirs: string[] = condaInfo.envs_dirs || [];
-        for (const dir of envsDirs) {
-          const candidate = path.join(dir, envName);
-          if (fs.existsSync(candidate)) {
-            envPath = candidate;
-            break;
-          }
-        }
-        if (!envPath) envPath = path.join(rootPrefix, 'envs', envName);
-      }
+      const envPath = resolveEnvPathFromInfo(condaInfo, envName);
       const condaMeta = path.join(envPath, 'conda-meta');
       if (!fs.existsSync(condaMeta)) {
         return await execConda(['list', '-n', envName]);
@@ -314,7 +312,10 @@ export class CondaService {
       terminal.show();
       const condaPath = getCondaPath();
       if (process.platform === 'win32') {
-        terminal.sendText(`& "${condaPath}" activate ${envName}`);
+        // cmd.exe: double quotes protect spaces without enabling expansion of
+        // the name itself. Strip stray quotes so the command stays well-formed.
+        const safeName = envName.replace(/"/g, '');
+        terminal.sendText(`& "${condaPath}" activate "${safeName}"`);
         return true;
       }
       // workaround for conda 4.8.4 bug: ensure activate.d/deactivate.d dirs exist
@@ -334,10 +335,11 @@ export class CondaService {
       ensureCondaDirs(getEnvPath(envName));
       ensureCondaDirs(getCondaPrefix());
       const prefix = getCondaPrefix();
+      const quoted = quotePosix(envName);
       if (prefix) {
-        terminal.sendText(`source "${prefix}/etc/profile.d/conda.sh" && conda activate ${envName}`);
+        terminal.sendText(`source "${prefix}/etc/profile.d/conda.sh" && conda activate ${quoted}`);
       } else {
-        terminal.sendText(`conda activate ${envName} 2>/dev/null || { CONDA_BASE=$(conda info --base 2>/dev/null) && source "$CONDA_BASE/etc/profile.d/conda.sh" && conda activate ${envName}; }`);
+        terminal.sendText(`conda activate ${quoted} 2>/dev/null || { CONDA_BASE=$(conda info --base 2>/dev/null) && source "$CONDA_BASE/etc/profile.d/conda.sh" && conda activate ${quoted}; }`);
       }
       return true;
     } catch (err) {

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandContext } from './context';
+import { listWslDistros } from './helpers';
 import { formatBytes } from '../util/format';
 
 export function registerMaintenanceCommands(ctx: CommandContext): void {
@@ -7,8 +8,7 @@ export function registerMaintenanceCommands(ctx: CommandContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('conda-assistant.scanWSL', async () => {
-      const remoteEnvs = await remote.detectAllEnvironments();
-      const wslEnvs = remoteEnvs.filter(env => env.type === 'wsl' && env.name !== vscode.l10n.t('WSL (当前)'));
+      const wslEnvs = await listWslDistros(remote);
       if (wslEnvs.length === 0) {
         vscode.window.showInformationMessage(vscode.l10n.t('未检测到 WSL Conda 环境'));
         return;
@@ -37,8 +37,7 @@ export function registerMaintenanceCommands(ctx: CommandContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('conda-assistant.openWSLTerminal', async () => {
-      const remoteEnvs = await remote.detectAllEnvironments();
-      const wslEnvs = remoteEnvs.filter(env => env.type === 'wsl' && env.name !== vscode.l10n.t('WSL (当前)'));
+      const wslEnvs = await listWslDistros(remote);
       if (wslEnvs.length === 0) {
         vscode.window.showInformationMessage(vscode.l10n.t('未检测到 WSL'));
         return;

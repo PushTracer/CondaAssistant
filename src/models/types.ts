@@ -23,14 +23,6 @@ export interface InstalledPackage {
   channel: string;
 }
 
-export interface PackageInfo {
-  name: string;
-  version: string;
-  channel: string;
-  size: string;
-  dependencies: string[];
-}
-
 export type HealthStatus = 'ok' | 'warning' | 'error' | 'info';
 
 export interface HealthCheckItem {

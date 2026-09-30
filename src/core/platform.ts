@@ -9,6 +9,37 @@ import { DiskSpace, DiskSpaceReport, InodeUsage } from '../models/types';
 
 export const isWindows = (): boolean => process.platform === 'win32';
 
+type PlatformErrorHandler = (context: string, err: unknown) => void;
+
+let platformErrorHandler: PlatformErrorHandler | undefined;
+
+/**
+ * platform.ts is a leaf module with no Logger dependency. The extension host
+ * wires its diagnostics here so swallowed probe / mkdir failures still reach
+ * the output channel instead of disappearing silently.
+ */
+export function setPlatformErrorHandler(handler: PlatformErrorHandler | undefined): void {
+  platformErrorHandler = handler;
+}
+
+function reportError(context: string, err: unknown): void {
+  try {
+    platformErrorHandler?.(context, err);
+  } catch {
+    // never let diagnostics throw
+  }
+}
+
+/**
+ * Quote a value for safe interpolation into a POSIX shell command by wrapping
+ * it in single quotes and escaping embedded single quotes. Prevents an
+ * environment/problem name containing spaces or metacharacters from being
+ * interpreted as shell syntax.
+ */
+export function quotePosix(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 export function homeDir(): string {
   return os.homedir() || process.env.HOME || process.env.USERPROFILE || (isWindows() ? 'C:\\' : '/home');
 }
@@ -96,6 +127,62 @@ export function getEnvPythonPath(envName: string): string | undefined {
   return fs.existsSync(pyPath) ? pyPath : undefined;
 }
 
+/**
+ * The subset of `conda info --json` output needed to resolve environment paths.
+ */
+export interface CondaInfoJson {
+  root_prefix?: string;
+  envs?: string[];
+  envs_dirs?: string[];
+  default_environment?: string;
+}
+
+/**
+ * Resolve the on-disk path of an environment from `conda info --json`.
+ * Single source of truth shared by size/package analysis and interpreter lookup.
+ */
+export function resolveEnvPathFromInfo(info: CondaInfoJson, envName: string): string {
+  const rootPrefix = info.root_prefix || '';
+  if (!envName) return '';
+  if (envName === 'base' || envName === rootPrefix) return rootPrefix;
+  for (const dir of info.envs_dirs || []) {
+    const candidate = path.join(dir, envName);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return rootPrefix ? path.join(rootPrefix, 'envs', envName) : '';
+}
+
+export interface PipWorkDirs {
+  tmpDir: string;
+  cacheDir: string;
+}
+
+/**
+ * Environment-local pip scratch directories.
+ *
+ * pip downloads into these before installing, so keeping them inside the
+ * target environment (a) avoids polluting the system temp dir and (b) gives
+ * the spawn liveness watcher a directory whose byte growth proves the
+ * download is still alive even when pip prints nothing.
+ */
+export function getPipWorkDirs(envName: string, create = true): PipWorkDirs {
+  const envPath = getEnvPath(envName);
+  if (!envPath) return { tmpDir: '', cacheDir: '' };
+  const tmpDir = path.join(envPath, '.pip-tmp');
+  const cacheDir = path.join(envPath, '.pip-cache');
+  if (create) {
+    for (const dir of [tmpDir, cacheDir]) {
+      try {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      } catch (err) {
+        // callers fall back to the system temp directory
+        reportError(vscode.l10n.t('创建 pip 工作目录失败'), err);
+      }
+    }
+  }
+  return { tmpDir, cacheDir };
+}
+
 export async function getDirectorySize(dirPath: string): Promise<number> {
   let total = 0;
   try {
@@ -109,7 +196,9 @@ export async function getDirectorySize(dirPath: string): Promise<number> {
       }
     }
   } catch {
-    // unreadable entries contribute nothing
+    // Unreadable entries contribute nothing. Deliberately not reported: this
+    // walks every file in an environment (and runs every 2s from the progress
+    // poller), so one permission-denied file would flood the output channel.
   }
   return total;
 }
@@ -137,25 +226,25 @@ export function getFreeDiskSpace(checkPath: string = '/'): DiskSpace {
       const free = Number(stats.bavail ?? stats.bfree) * blockSize;
       const total = Number(stats.blocks) * blockSize;
       if (blockSize > 0) return { free, total, freeGB: formatBytes(free) };
-    } catch {
+    } catch (err) {
       // fall through to legacy probes
+      reportError(vscode.l10n.t('读取磁盘空间失败'), err);
     }
   }
   try {
     if (isWindows()) {
-      const drive = path.parse(target).root.split(':')[0] + ':';
+      // wmic was removed from recent Windows builds, so query the volume via
+      // .NET DriveInfo instead. `root` already ends with a backslash.
+      const root = path.parse(target).root;
+      const script = `$d=[System.IO.DriveInfo]::new('${root}');Write-Output $d.AvailableFreeSpace;Write-Output $d.TotalSize`;
       const out = child_process.execSync(
-        `wmic logicaldisk where "DeviceID='${drive}'" get FreeSpace,Size /format:csv`,
-        { timeout: 5000 }
+        `powershell -NoProfile -NonInteractive -Command "${script}"`,
+        { timeout: 5000, windowsHide: true }
       ).toString();
-      for (const line of out.split('\n').filter(l => l.trim())) {
-        if (line.includes(drive)) {
-          const parts = line.split(',').map(s => s.trim());
-          const free = parseInt(parts[1]) || 0;
-          const total = parseInt(parts[2]) || 0;
-          return { free, total, freeGB: formatBytes(free) };
-        }
-      }
+      const [freeStr, totalStr] = out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const free = parseInt(freeStr) || 0;
+      const total = parseInt(totalStr) || 0;
+      if (free > 0 || total > 0) return { free, total, freeGB: formatBytes(free) };
     } else {
       const out = child_process.execSync(`df -B1 "${target}" 2>/dev/null | tail -1`, { timeout: 5000 }).toString();
       const parts = out.trim().split(/\s+/);
@@ -165,8 +254,8 @@ export function getFreeDiskSpace(checkPath: string = '/'): DiskSpace {
         return { free, total, freeGB: formatBytes(free) };
       }
     }
-  } catch {
-    // ignore probe failures
+  } catch (err) {
+    reportError(vscode.l10n.t('磁盘空间探测失败'), err);
   }
   return { free: 0, total: 0, freeGB: '?' };
 }
@@ -182,8 +271,8 @@ export function getInodeUsage(checkPath: string): InodeUsage | null {
       const percent = total > 0 ? Math.round((used / total) * 100) : 0;
       return { used, total, percent };
     }
-  } catch {
-    // ignore probe failures
+  } catch (err) {
+    reportError(vscode.l10n.t('inode 探测失败'), err);
   }
   return null;
 }

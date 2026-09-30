@@ -1,0 +1,16 @@
+# Build inputs / tooling — not needed at runtime
+src/**
+test/**
+out/test/**
+scripts/**
+.github/**
+node_modules/**
+tsconfig.json
+package-lock.json
+.vscode/**
+.vscode-test/**
+.vscodeignore
+.gitignore
+**/*.ts
+**/*.map
+*.vsix

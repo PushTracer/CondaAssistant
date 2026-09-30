@@ -28,5 +28,5 @@
   "config.healthCheckOnStartup.description": "启动时自动进行环境健康检查",
   "config.showInactiveEnvironments.description": "显示非激活环境",
   "config.enableWSLSupport.description": "启用 WSL Conda 检测",
-  "config.condaInstallTimeout.description": "Conda 安装超时时间（毫秒，默认 10 分钟）"
+  "config.condaInstallTimeout.description": "Conda / pip 安装超时：安装过程中超过该时长没有任何输出则终止（毫秒，默认 600000，即 10 分钟无输出）"
 }

@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { formatBytes } from '../src/util/format';
+import { formatBytes, parseByteAmount } from '../src/util/format';
 import { parseCondaEnvList } from '../src/util/parse';
 
 suite('工具函数单元测试', () => {
@@ -15,6 +15,17 @@ suite('工具函数单元测试', () => {
   test('formatBytes 应处理非法输入', () => {
     assert.strictEqual(formatBytes(-1), '0 B');
     assert.strictEqual(formatBytes(Number.NaN), '0 B');
+  });
+
+  test('parseByteAmount 应按单位换算并容忍非法输入', () => {
+    assert.strictEqual(parseByteAmount('512', 'B'), 512);
+    assert.strictEqual(parseByteAmount('1', 'KB'), 1024);
+    assert.strictEqual(parseByteAmount('1.5', 'MB'), 1.5 * 1024 ** 2);
+    assert.strictEqual(parseByteAmount('2', 'G'), 2 * 1024 ** 3);
+    // 单位缺失按字节处理
+    assert.strictEqual(parseByteAmount('10', ''), 10);
+    // 非法数值不产生 NaN
+    assert.strictEqual(parseByteAmount('abc', 'MB'), 0);
   });
 
   test('parseCondaEnvList 应解析环境并跳过注释行', () => {

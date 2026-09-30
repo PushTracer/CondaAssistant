@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Logger } from './core/logger';
 import { getConfig } from './core/config';
+import { setPlatformErrorHandler } from './core/platform';
 import { CondaService } from './services/condaService';
 import { HealthService } from './services/healthService';
 import { InterpreterService } from './services/interpreterService';
@@ -14,6 +15,7 @@ import { registerCommands } from './commands';
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('Conda Manager');
   const logger = new Logger(outputChannel);
+  setPlatformErrorHandler((context, err) => logger.error(context, err));
   logger.log(vscode.l10n.t('Conda Manager 启动中...'));
 
   const conda = new CondaService(logger);

@@ -2,8 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { Logger } from '../core/logger';
-import { execConda, execFileChecked } from '../core/shell';
-import { getEnvPath } from '../core/platform';
+import { execConda } from '../core/shell';
+import { execFileChecked } from '../core/process';
+import { getEnvPythonPath } from '../core/platform';
 import { HealthCheckItem, HealthCheckResult } from '../models/types';
 
 export class HealthService {
@@ -45,11 +46,7 @@ export class HealthService {
   }
 
   private pyPath(envName: string): string {
-    const envPath = getEnvPath(envName);
-    if (!envPath) return '';
-    return process.platform === 'win32'
-      ? path.join(envPath, 'python.exe')
-      : path.join(envPath, 'bin', 'python');
+    return getEnvPythonPath(envName) || '';
   }
 
   private async checkConda(checks: HealthCheckItem[]): Promise<void> {

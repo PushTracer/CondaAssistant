@@ -37,14 +37,14 @@ CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境�
 方式一（命令行）：
 
 ```bash
-code --install-extension conda-assistant-0.3.0.vsix
+code --install-extension conda-assistant-0.3.1.vsix
 ```
 
 方式二（图形界面）：
 
 1. 打开 VS Code，按 `Ctrl+Shift+X` 打开扩展面板；
 2. 点击右上角 `...` → **Install from VSIX...**；
-3. 选择 `conda-assistant-0.3.0.vsix` 并重载窗口。
+3. 选择 `conda-assistant-0.3.1.vsix` 并重载窗口。
 
 ### 1.3 首次启动
 
@@ -128,7 +128,7 @@ WSL 环境会提示你改用 WSL 终端手动激活。
 
 - **删除**：右键 → 删除环境，需在模态框中点击 **确认删除**；删除后询问是否顺带执行 `conda clean -afy` 清理包缓存；
 - **克隆**：右键 → 克隆环境，输入新名称（等价 `conda create --clone`）；
-- **重命名**：右键 → 重命名环境，实现方式为「克隆到新名称 + 删除旧环境」，大环境耗时较长，请耐心等待。
+- **重命名**：右键 → 重命名环境，优先调用 conda 原生命令 `conda rename`（conda ≥ 4.14；旧版本自动回退为「克隆到新名称 + 删除旧环境」），大环境耗时较长，请耐心等待。
 
 ### 3.5 查看环境详情
 
@@ -198,7 +198,7 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 ### 4.4 安装过程
 
 - 打开独立输出通道 `安装 <环境名>`，实时输出 conda / pip 日志；
-- 通知进度条显示下载速度与百分比，可取消；
+- 通知进度条显示下载速度与"已下载 / 总量"，可取消；
 - 若环境缺少 pip，会弹窗询问是否安装；
 - pip 安装时自动为环境创建隔离的临时目录与缓存目录（`<env>/.pip-tmp`、`<env>/.pip-cache`）。
 
@@ -308,7 +308,7 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 | `conda-assistant.healthCheckOnStartup` | boolean | `true` | 启动时自动进行环境健康检查 |
 | `conda-assistant.showInactiveEnvironments` | boolean | `true` | 显示非激活环境 |
 | `conda-assistant.enableWSLSupport` | boolean | `true` | 启用 WSL Conda 检测 |
-| `conda-assistant.condaInstallTimeout` | number | `600000` | Conda / pip 安装超时（毫秒） |
+| `conda-assistant.condaInstallTimeout` | number | `600000` | Conda / pip 安装过程中的"无输出超时"（毫秒）：持续有输出不会超时，仅在静默超过该时长后终止安装 |
 
 ---
 
@@ -318,7 +318,7 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 安装 Miniconda / Anaconda 后重载窗口，或在设置中显式填写 `conda-assistant.condaPath`。Windows 常见路径为 `%USERPROFILE%\miniconda3\Scripts\conda.exe`。
 
 **Q：安装大包时超时？**
-调大 `conda-assistant.condaInstallTimeout`（默认 10 分钟）。安装前建议先用「清理缓存」释放空间。
+超时为"无输出超时"：只要安装过程持续有输出（如正在下载），就不会被终止；仅当连续 `conda-assistant.condaInstallTimeout`（默认 10 分钟）没有任何输出时才判定为卡死并终止。若确实遇到超时，可调大该设置后重试；进度通知上的**取消**按钮可随时真正终止安装进程。
 
 **Q：pip 下载报 ENOSPC？**
 多为临时目录或 inode 不足。执行「磁盘空间诊断」，清理缓存后重试；也可清理 `/tmp`。
@@ -333,7 +333,7 @@ RTX 50 系列显卡选 `cu130`（模板中会带「RTX 50 系列推荐」标记�
 设计如此，写操作请用 **打开 WSL 终端** 在 WSL 内执行。
 
 **Q：重命名环境很慢？**
-重命名为「克隆 + 删除」两步操作，环境越大越慢，属于正常现象。
+扩展优先调用 `conda rename`；若 conda 版本较旧则回退为「克隆 + 删除」，环境越大越慢，属于正常现象。
 
 ---
 
@@ -345,8 +345,8 @@ npm run compile      # 编译到 out/
 npm run watch        # 监听编译
 npm run lint         # 类型检查（tsc --noEmit）
 npm run l10n:check   # 校验英文翻译是否覆盖全部 l10n.t 文案
-npm test             # 启动 VS Code 扩展测试（9 个用例）
-npm run package      # 打包生成 conda-assistant-0.3.0.vsix
+npm test             # 启动 VS Code 扩展测试（17 个用例）
+npm run package      # 打包生成 conda-assistant-0.3.1.vsix
 ```
 
 代码结构：
@@ -355,10 +355,10 @@ npm run package      # 打包生成 conda-assistant-0.3.0.vsix
 src/
 ├── extension.ts        激活入口
 ├── models/types.ts     共享类型
-├── core/               logger / config / platform / shell
+├── core/               logger / config / platform / process（进程原语）/ shell（conda、pip 封装）
 ├── util/               纯工具函数（format / parse）
 ├── services/           conda / health / interpreter / remote / disk / pytorchTest
-├── ai/                 环境模板与 PyTorch CUDA 索引抓取
+├── ai/                 环境模板、PyTorch CUDA 索引抓取、pip 进度解析、一键创建向导
 ├── views/              环境树 / 快速操作树 / 健康面板
 └── commands/           命令注册（按领域拆分）
 resources/

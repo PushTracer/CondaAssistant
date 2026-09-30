@@ -2,7 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { Logger } from '../core/logger';
-import { execConda, execFileChecked, execShell } from '../core/shell';
+import { getConfig } from '../core/config';
+import { execConda } from '../core/shell';
+import { execFileChecked, execShell } from '../core/process';
 import {
   getCondaPrefix,
   getEnvPythonPath,
@@ -40,7 +42,7 @@ export class DiskService {
   async cleanCaches(kind: CacheKind): Promise<CleanCacheResult> {
     const before = getFreeDiskSpace();
     if (kind === 'conda' || kind === 'all') {
-      await execConda(['clean', '-afy'], 120000);
+      await execConda(['clean', '-afy'], getConfig().condaInstallTimeout || 600000);
       this.logger.log(vscode.l10n.t('Conda 缓存已清理'));
     }
     if (kind === 'pip' || kind === 'all') {

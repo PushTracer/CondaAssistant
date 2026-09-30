@@ -28,5 +28,5 @@
   "config.healthCheckOnStartup.description": "Run an environment health check on startup",
   "config.showInactiveEnvironments.description": "Show inactive environments",
   "config.enableWSLSupport.description": "Enable WSL Conda detection",
-  "config.condaInstallTimeout.description": "Conda install timeout in milliseconds (default 10 minutes)"
+  "config.condaInstallTimeout.description": "Conda / pip install timeout: terminate the process if it produces no output for this long (milliseconds, default 600000 = 10 minutes of silence)"
 }
