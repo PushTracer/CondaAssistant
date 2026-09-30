@@ -2,7 +2,7 @@
   "name": "conda-assistant",
   "displayName": "Conda Manager",
   "description": "%description%",
-  "version": "0.3.2",
+  "version": "0.3.4",
   "publisher": "pushtracer",
   "license": "MIT",
   "repository": {
@@ -30,6 +30,9 @@
     "onView:condaQuickActions"
   ],
   "main": "./out/src/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
   "icon": "resources/icon.png",
   "contributes": {
     "viewsContainers": {
@@ -91,10 +94,6 @@
       {
         "command": "conda-assistant.selectInterpreter",
         "title": "%command.selectInterpreter%"
-      },
-      {
-        "command": "conda-assistant.switchInterpreter",
-        "title": "%command.switchInterpreter%"
       },
       {
         "command": "conda-assistant.installPackage",

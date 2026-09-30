@@ -64,7 +64,16 @@ export function registerEnvironmentCommands(ctx: CommandContext): void {
         return;
       }
       await conda.activateEnvironment(envName);
-      await interpreter.autoSelectCondaEnv(envName);
+
+      // The terminal environment and the interpreter VS Code uses for
+      // running/analyzing the file are independent; which interpreter is active
+      // is owned by the Python extension's own picker.
+      const pick = vscode.l10n.t('打开选择界面');
+      const choice = await vscode.window.showInformationMessage(
+        vscode.l10n.t('已激活终端环境 {0}。VS Code 使用的解释器需单独选择：', envName),
+        pick
+      );
+      if (choice === pick) await interpreter.selectInterpreter();
     })
   );
 

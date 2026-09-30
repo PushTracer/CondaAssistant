@@ -57,7 +57,7 @@ export class EnvironmentsTreeProvider implements vscode.TreeDataProvider<Environ
     }
 
     const details: { label: string; icon: string; command?: string; envName?: string }[] = [
-      { label: `Python ${fullEnv.pythonVersion || '?'}`, icon: 'symbol-misc', command: 'conda-assistant.switchInterpreter', envName: fullEnv.name },
+      { label: `Python ${fullEnv.pythonVersion || '?'}`, icon: 'symbol-misc', command: 'conda-assistant.selectInterpreter', envName: fullEnv.name },
       { label: vscode.l10n.t('{0} 个包', String(fullEnv.packages)), icon: 'package' },
       { label: vscode.l10n.t('大小: {0}', fullEnv.size || '?'), icon: 'database' },
       { label: vscode.l10n.t('路径: {0}', fullEnv.path), icon: 'folder' },
@@ -67,7 +67,7 @@ export class EnvironmentsTreeProvider implements vscode.TreeDataProvider<Environ
       item.iconPath = new vscode.ThemeIcon(detail.icon);
       if (detail.command && detail.envName) {
         item.command = { command: detail.command, title: vscode.l10n.t('切换解释器'), arguments: [detail.envName] };
-        item.tooltip = vscode.l10n.t('点击切换 VS Code Python 解释器到此环境');
+        item.tooltip = vscode.l10n.t('点击打开 Python 解释器选择界面');
       }
       return item;
     });

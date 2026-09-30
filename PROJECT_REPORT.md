@@ -8,7 +8,7 @@
 |------|------|
 | 名称 | `conda-assistant` (Conda Manager) |
 | 类型 | VS Code 扩展（TypeScript） |
-| 版本 | 0.3.2 |
+| 版本 | 0.3.4 |
 | 发布者 | pushtracer |
 | 描述 | 智能 Conda 环境助手（面向 AI/深度学习场景） |
 | 仓库 | https://github.com/PushTracer/CondaAssistant |
@@ -45,7 +45,7 @@ src/
 ├── services/
 │   ├── condaService.ts       352  conda 命令封装、环境增删改查/导出导入/包分析
 │   ├── healthService.ts      184  健康检查与评分
-│   ├── interpreterService.ts 287  VS Code Python 解释器切换
+│   ├── interpreterService.ts  44  交给 Python 扩展：同步 condaPath、打开官方解释器选择器
 │   ├── remoteService.ts      100  WSL 检测与命令桥接
 │   ├── diskService.ts         86  磁盘诊断与缓存清理
 │   └── pytorchTestService.ts  43  PyTorch 功能测试调度

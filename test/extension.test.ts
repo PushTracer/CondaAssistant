@@ -13,7 +13,6 @@ const EXPECTED_COMMANDS = [
   'conda-assistant.healthCheck',
   'conda-assistant.pytorchTest',
   'conda-assistant.analyzeEnvironment',
-  'conda-assistant.switchInterpreter',
   'conda-assistant.selectInterpreter',
   'conda-assistant.installPackage',
   'conda-assistant.uninstallPackage',

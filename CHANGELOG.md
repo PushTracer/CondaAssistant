@@ -2,6 +2,25 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格。
 
+## [0.3.4] - 2026-09-30
+
+### 变更
+
+- **解释器选择交还给 Python 扩展**：本扩展不再尝试程序化切换解释器（此前那套调用在部分环境下会静默失效，失败还会被误判为成功）。「激活环境」现在只负责终端环境，并在提示里提供「打开选择界面」入口，直接拉起官方的 `Python: Select Interpreter`。
+- 环境树中 `Python x.y` 一行、以及「切换 Python 解释器」命令，同样改为打开官方选择器。
+- 移除 `conda-assistant.switchInterpreter` 命令（它唯一的职责是按环境名切换解释器，已不再需要）。
+- **不再改写用户设置**：删除对全局 `python.defaultInterpreterPath` 与 `python.terminal.activateEnvironment` 的写入。旧版本写过的值不会被自动清理，需要的话请手动删除。
+
+### 新增
+
+- `"extensionKind": ["workspace"]`：确保扩展运行在 conda 与代码所在的一端，适配远程 SSH / WSL / 容器。
+- 把解析出的 conda 路径镜像到 `python.condaPath`（仅在用户未自行设置时），提升 Python 扩展发现 conda 环境的概率。
+- 环境路径解析辅助与死代码清理：移除 `PythonInterpreter` / `InterpreterType` 类型及一批不再使用的 `[setInterpreter]` 文案。
+
+### 说明
+
+- 本次改动**未**验证到「修复了某个具体故障」。后续确认 Python 扩展官方的 conda 解释器切换本身工作正常，因此本扩展不再重复实现该功能，只保留上面对 Python 扩展的辅助与设置卫生。
+
 ## [0.3.2] - 2026-09-30
 
 ### 图标

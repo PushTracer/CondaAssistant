@@ -11,7 +11,6 @@
   "command.pytorchTest": "PyTorch 功能测试",
   "command.analyzeEnvironment": "环境分析",
   "command.selectInterpreter": "切换 Python 解释器",
-  "command.switchInterpreter": "切换解释器（指定环境）",
   "command.installPackage": "安装包",
   "command.uninstallPackage": "卸载包",
   "command.showPackageDeps": "查看依赖",

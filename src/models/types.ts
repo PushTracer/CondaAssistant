@@ -36,15 +36,6 @@ export interface HealthCheckResult {
   checks: HealthCheckItem[];
 }
 
-export type InterpreterType = 'conda' | 'venv' | 'uv' | 'poetry' | 'system';
-
-export interface PythonInterpreter {
-  path: string;
-  version: string;
-  type: InterpreterType;
-  envName: string;
-}
-
 export type RemoteType = 'local' | 'wsl' | 'ssh' | 'container';
 
 export interface RemoteEnvironment {

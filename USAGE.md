@@ -37,14 +37,14 @@ CondaAssistant 是一个面向 AI / 深度学习场景的 VS Code Conda 环境�
 方式一（命令行）：
 
 ```bash
-code --install-extension conda-assistant-0.3.2.vsix
+code --install-extension conda-assistant-0.3.4.vsix
 ```
 
 方式二（图形界面）：
 
 1. 打开 VS Code，按 `Ctrl+Shift+X` 打开扩展面板；
 2. 点击右上角 `...` → **Install from VSIX...**；
-3. 选择 `conda-assistant-0.3.2.vsix` 并重载窗口。
+3. 选择 `conda-assistant-0.3.4.vsix` 并重载窗口。
 
 ### 1.3 首次启动
 
@@ -110,19 +110,23 @@ code --install-extension conda-assistant-0.3.2.vsix
 
 ### 3.2 激活环境
 
-在环境节点上右键 → **激活环境**。扩展会：
+在环境节点上右键 → **激活环境**。扩展会在终端里发送 `conda activate`。
 
-1. 打开（或复用）终端并发送 `conda activate`；
-2. 同时尝试把 VS Code 的 Python 解释器切换到该环境。
+> ⚠️ **终端环境和 VS Code 使用的解释器是两回事。** 终端激活只影响终端里的 `python` 命令；文件里的 `import` 解析、▷ 运行按钮用的是**活动解释器**（状态栏右下角那个）。激活环境后扩展会弹一个提示，点其中的 **打开选择界面** 即可切解释器。
 
 WSL 环境会提示你改用 WSL 终端手动激活。
 
 ### 3.3 切换解释器
 
-- **按环境**：展开环境节点，点击 `Python x.y` 行；
-- **从列表选择**：执行 **切换 Python 解释器**，在快速选择中挑选 Conda 环境。
+解释器选择**完全交给 Python 扩展官方的选择器**（它负责环境发现、多根工作区归属与持久化）：
 
-扩展会写入 workspace/全局的 `python.defaultInterpreterPath`，并通过 Python 扩展 API 切换活动解释器（含结果校验）。切换过程日志可在输出面板查看。
+- **入口一**：展开环境节点，点击 `Python x.y` 一行；
+- **入口二**：执行 **切换 Python 解释器**；
+- **入口三**：直接点状态栏右下角的解释器。
+
+以上都会拉起官方的 `Python: Select Interpreter`，随后在列表中选择目标环境。
+
+> 如果列表里看不到你的 conda 环境，请把 conda 可执行文件路径填到 `python.condaPath`（例如 `~/miniconda3/bin/conda`）后重载窗口。本扩展在启动与激活环境时会尽量帮你把这个值补上。
 
 ### 3.4 删除 / 克隆 / 重命名
 
@@ -282,7 +286,6 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 | `conda-assistant.pytorchTest` | PyTorch 功能测试 |
 | `conda-assistant.analyzeEnvironment` | 环境分析 |
 | `conda-assistant.selectInterpreter` | 切换 Python 解释器 |
-| `conda-assistant.switchInterpreter` | 切换解释器（指定环境） |
 | `conda-assistant.installPackage` | 安装包 |
 | `conda-assistant.uninstallPackage` | 卸载包 |
 | `conda-assistant.showPackageDeps` | 查看依赖 |
@@ -326,8 +329,8 @@ PyTorch / 计算机视觉 / NLP 模板会实时访问 `download.pytorch.org` 探
 **Q：该选哪个 CUDA 版本？**
 RTX 50 系列显卡选 `cu130`（模板中会带「RTX 50 系列推荐」标记）；RTX 30/40 系列一般选 `cu126` 或 `cu124`；无 NVIDIA 显卡选 CPU。
 
-**Q：切换解释器后仍显示旧环境？**
-确认已安装 Python 扩展，并查看输出面板 `[setInterpreter]` 日志；部分工程在 `.vscode/settings.json` 中固定了解释器，以 workspace 设置为准。
+**Q：激活环境后文件里的 `import` 还是报错 / 运行按钮用的是别的 python？**
+终端环境和 VS Code 使用的**活动解释器**相互独立。请在状态栏右下角（或 `Ctrl+Shift+P` → **切换 Python 解释器**）把解释器切到该环境。若列表里没有你的 conda 环境，先设置 `python.condaPath` 指向 conda 可执行文件，再重载窗口。
 
 **Q：WSL 中的环境不能安装包？**
 设计如此，写操作请用 **打开 WSL 终端** 在 WSL 内执行。
@@ -346,7 +349,7 @@ npm run watch        # 监听编译
 npm run lint         # 类型检查（tsc --noEmit）
 npm run l10n:check   # 校验英文翻译是否覆盖全部 l10n.t 文案
 npm test             # 启动 VS Code 扩展测试（17 个用例）
-npm run package      # 打包生成 conda-assistant-0.3.2.vsix
+npm run package      # 打包生成 conda-assistant-0.3.4.vsix
 ```
 
 代码结构：

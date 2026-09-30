@@ -36,6 +36,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   registerCommands({ context, logger, conda, health, interpreter, remote, disk, pytorchTest, envTree });
 
+  // Help the Python extension discover conda environments (no-op unless
+  // conda-assistant.condaPath is set). See InterpreterService for details.
+  void interpreter.syncCondaPathToPythonExtension();
+
   if (getConfig().autoDetectConda) {
     void initialize(logger, conda, health, remote, envTree);
   }

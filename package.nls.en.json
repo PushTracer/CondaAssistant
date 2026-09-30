@@ -11,7 +11,6 @@
   "command.pytorchTest": "PyTorch Functional Test",
   "command.analyzeEnvironment": "Analyze Environment",
   "command.selectInterpreter": "Select Python Interpreter",
-  "command.switchInterpreter": "Switch Interpreter (Specific Environment)",
   "command.installPackage": "Install Package",
   "command.uninstallPackage": "Uninstall Package",
   "command.showPackageDeps": "Show Dependencies",
