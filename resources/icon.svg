@@ -1,4 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="4" fill="#43B02A"/>
-  <text x="16" y="22" font-size="18" font-family="Arial" font-weight="bold" fill="white" text-anchor="middle">C</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Conda Manager">
+  <defs>
+    <linearGradient id="cmBg" x1="12" y1="6" x2="116" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1B2A22"/>
+      <stop offset="1" stop-color="#0B110D"/>
+    </linearGradient>
+    <linearGradient id="cmSheen" x1="6" y1="4" x2="74" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#cmBg)"/>
+  <rect width="128" height="128" rx="28" fill="url(#cmSheen)"/>
+  <!-- "C" ring, opening to the right -->
+  <path d="M87.75 44.07 A31 31 0 1 0 87.75 83.93"
+        fill="none" stroke="#5BD24A" stroke-width="14" stroke-linecap="round"/>
+  <!-- AI sparkle -->
+  <polygon points="64,45 68.03,59.97 83,64 68.03,68.03 64,83 59.97,68.03 45,64 59.97,59.97"
+           fill="#FFFFFF"/>
 </svg>
