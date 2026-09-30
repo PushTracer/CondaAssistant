@@ -49,6 +49,9 @@ npm run lint         # 类型检查（tsc --noEmit）
 npm run l10n:check   # 校验英文翻译覆盖率
 npm test             # 启动 VS Code 扩展测试宿主
 npm run package      # 打包 .vsix
+
+# 重新生成图标位图（设计母版为 resources/icon.svg）
+powershell -ExecutionPolicy Bypass -File scripts/make-icon.ps1
 ```
 
 代码结构见 [PROJECT_REPORT.md](PROJECT_REPORT.md)。

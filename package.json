@@ -37,7 +37,7 @@
         {
           "id": "conda-assistant-sidebar",
           "title": "Conda Manager",
-          "icon": "resources/icon.png"
+          "icon": "resources/activitybar.svg"
         }
       ]
     },
